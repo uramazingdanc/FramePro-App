@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
@@ -116,7 +117,7 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       const floorLabels = ['Ground Floor', 'First Floor', 'Second Floor', 'Third Floor'];
       ctx.fillStyle = '#222';
       ctx.font = 'bold 16px Arial';
-      ctx.fillText(floorLabels[numStories - storyIndex - 1], startX - 80, currentY + storyHeight / 2);
+      ctx.fillText(floorLabels[structureData.numStories - storyIndex - 1], startX - 80, currentY + storyHeight / 2);
       ctx.font = '14px Arial';
       
       // Move to the next story
