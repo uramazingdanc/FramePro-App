@@ -101,3 +101,10 @@
 .nav-link.active {
   @apply bg-gray-100 font-semibold;
 }
+
+/* Mobile navigation styling */
+@media (max-width: 768px) {
+  .nav-link {
+    @apply block w-full text-left py-3 px-4;
+  }
+}

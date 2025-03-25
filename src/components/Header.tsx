@@ -73,7 +73,10 @@ const Header: React.FC = () => {
               </SheetTrigger>
               <SheetContent side="right" className="w-[250px] sm:w-[300px]">
                 <div className="flex flex-col space-y-4 mt-8">
-                  <NavLinks />
+                  {/* Improve mobile navigation to maintain proper spacing and appearance */}
+                  <div className="space-y-2 px-2">
+                    <NavLinks />
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
