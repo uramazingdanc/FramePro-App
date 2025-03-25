@@ -1,8 +1,12 @@
-import { useLocation } from "react-router-dom";
+
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { motion } from "framer-motion";
+import Layout from "@/components/Layout";
 
 const NotFound = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     console.error(
@@ -12,15 +16,27 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
-        </a>
+    <Layout>
+      <div className="container mx-auto px-4 py-12 min-h-[60vh] flex flex-col items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="glassmorphism p-8 rounded-xl text-center max-w-md"
+        >
+          <h1 className="text-6xl font-bold mb-4 text-framepro-text">404</h1>
+          <p className="text-xl text-framepro-darkgray mb-6">
+            Oops! The page you're looking for doesn't exist.
+          </p>
+          <button 
+            onClick={() => navigate('/')}
+            className="btn-primary"
+          >
+            Return to Home
+          </button>
+        </motion.div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
