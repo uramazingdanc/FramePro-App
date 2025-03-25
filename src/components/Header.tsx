@@ -2,11 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 import Logo from './Logo';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Header: React.FC = () => {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -16,6 +20,28 @@ const Header: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const navItems = [
+    { path: '/', label: 'Home' },
+    { path: '/calculator', label: 'Calculator' },
+    { path: '/visualization', label: 'Visualization' },
+  ];
+
+  const NavLinks = () => (
+    <>
+      {navItems.map((item) => (
+        <Link 
+          key={item.path}
+          to={item.path} 
+          className={`nav-link px-4 py-2 rounded-md font-medium text-framepro-text hover:bg-gray-100 transition-colors ${
+            location.pathname === item.path ? 'bg-gray-100 font-semibold' : ''
+          }`}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </>
+  );
 
   return (
     <motion.header
@@ -32,30 +58,25 @@ const Header: React.FC = () => {
         <div className="flex justify-between items-center">
           <Logo />
           
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-1">
-            <Link to="/" 
-              className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
-            >
-              Home
-            </Link>
-            <Link to="/calculator" 
-              className={`nav-link ${location.pathname === '/calculator' ? 'active' : ''}`}
-            >
-              Calculator
-            </Link>
-            <Link to="/visualization" 
-              className={`nav-link ${location.pathname === '/visualization' ? 'active' : ''}`}
-            >
-              Visualization
-            </Link>
+            <NavLinks />
           </nav>
           
+          {/* Mobile Navigation */}
           <div className="md:hidden">
-            <button className="p-2 rounded-md text-framepro-text hover:bg-gray-100">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <button className="p-2 rounded-md text-framepro-text hover:bg-gray-100">
+                  <Menu className="w-6 h-6" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[250px] sm:w-[300px]">
+                <div className="flex flex-col space-y-4 mt-8">
+                  <NavLinks />
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
