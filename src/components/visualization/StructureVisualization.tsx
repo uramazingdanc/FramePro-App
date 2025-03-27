@@ -35,6 +35,29 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
   // Drawing scale factor
   const scale = 40; // pixels per meter
   
+  // Helper function to get ordinal suffix
+  function getOrdinalSuffix(i: number) {
+    const j = i % 10,
+          k = i % 100;
+    if (j === 1 && k !== 11) {
+      return "st";
+    }
+    if (j === 2 && k !== 12) {
+      return "nd";
+    }
+    if (j === 3 && k !== 13) {
+      return "rd";
+    }
+    return "th";
+  }
+  
+  // Create floor labels with correct naming convention
+  const createFloorLabel = (storyIndex: number, numStories: number) => {
+    if (storyIndex === numStories - 1) return 'Ground Floor';
+    const floorNumber = numStories - storyIndex;
+    return `${floorNumber}${getOrdinalSuffix(floorNumber)} Floor`;
+  };
+  
   useEffect(() => {
     if (!canvasRef.current) return;
     
@@ -113,11 +136,11 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
         columnX += spanWidth;
       }
       
-      // Modify floor labeling
-      const floorLabels = ['Ground Floor', 'First Floor', 'Second Floor', 'Third Floor'];
+      // Use correct floor label
+      const floorLabel = createFloorLabel(storyIndex, structureData.numStories);
       ctx.fillStyle = '#222';
       ctx.font = 'bold 16px Arial';
-      ctx.fillText(floorLabels[structureData.numStories - storyIndex - 1], startX - 80, currentY + storyHeight / 2);
+      ctx.fillText(floorLabel, startX - 80, currentY + storyHeight / 2);
       ctx.font = '14px Arial';
       
       // Move to the next story

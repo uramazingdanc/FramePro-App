@@ -78,50 +78,47 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         storyColumnShear.push(columnShearForce);
         
         // Step 2: Calculate column moment (M_col = V × h/2)
-        const columnMomentValue = columnShearForce * storyHeights[storyIndex] * 0.5;
+        // Using the explicit formula with half the height as requested
+        const columnMomentValue = columnShearForce * (storyHeights[storyIndex] * 0.5);
         storyColumnMoment.push(columnMomentValue);
       }
       
       // Step 3: Calculate girder moments based on joint equilibrium
+      // For each span, calculate the girder moment using joint equilibrium: ∑M = 0
       for (let spanIndex = 0; spanIndex < spansPerStory[storyIndex]; spanIndex++) {
-        // For each span, calculate the girder moment using joint equilibrium
-        // Sum of moments at joint = 0
+        let girderMomentValue = 0;
         
-        // Left column moment
-        const leftColumnMoment = storyColumnMoment[spanIndex];
-        
-        // Right column moment
-        const rightColumnMoment = storyColumnMoment[spanIndex + 1];
-        
-        // For simplicity, we'll use a simplified approach for girder moment calculation
-        // In a real implementation, this would consider the full joint equilibrium
-        
-        // For the first span at each story
+        // For the first span (leftmost)
         if (spanIndex === 0) {
           // The girder moment is equal to the column moment at the left end
-          storyGirderMoment.push(leftColumnMoment);
+          // Girder Moment = -(-Column Moment) = Column Moment
+          girderMomentValue = storyColumnMoment[spanIndex];
         } 
+        // For the last span (rightmost)
+        else if (spanIndex === spansPerStory[storyIndex] - 1) {
+          // For the last span, the right column moment must be balanced
+          // Girder Moment = -(-Column Moment) = Column Moment
+          girderMomentValue = storyColumnMoment[spanIndex + 1];
+        }
         // For middle spans
-        else if (spanIndex < spansPerStory[storyIndex] - 1) {
-          // For middle spans, we account for moments from both sides
-          const previousGirderMoment = storyGirderMoment[spanIndex - 1];
-          const girderMomentValue = (leftColumnMoment + rightColumnMoment - previousGirderMoment) / 2;
-          storyGirderMoment.push(girderMomentValue);
-        }
-        // For the last span
         else {
-          // The girder moment equals the right column moment
-          storyGirderMoment.push(rightColumnMoment);
+          // Apply ∑M = 0 at the joint
+          // -Left Column Moment - Right Column Moment + Previous Girder Moment + Current Girder Moment = 0
+          // Current Girder Moment = Left Column Moment + Right Column Moment - Previous Girder Moment
+          girderMomentValue = storyColumnMoment[spanIndex] + storyColumnMoment[spanIndex + 1] - storyGirderMoment[spanIndex - 1];
         }
+        
+        storyGirderMoment.push(girderMomentValue);
         
         // Step 4: Calculate girder shear from girder moments
         const spanLength = spanMeasurements[storyIndex][spanIndex];
         
         // Girder shear = Sum of girder moments / span length
-        const leftMoment = storyGirderMoment[spanIndex];
+        // For middle spans, we add the current girder moment and the next one (if it exists)
+        const leftMoment = girderMomentValue;
         const rightMoment = spanIndex === spansPerStory[storyIndex] - 1 
-                            ? leftMoment  // For the last span, use the same moment
-                            : storyGirderMoment[spanIndex + 1];
+                          ? leftMoment  // For the last span, use the same moment
+                          : storyGirderMoment[spanIndex + 1] || leftMoment; // Fallback to left if next is not calculated yet
         
         const girderShearValue = (leftMoment + rightMoment) / spanLength;
         storyGirderShear.push(girderShearValue);

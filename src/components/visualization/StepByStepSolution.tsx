@@ -25,8 +25,11 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
   // Calculate number of columns for each story
   const columnsPerStory = spansPerStory.map(spans => spans + 1);
   
-  // Create floor labels
-  const floorLabels = ['Ground Floor', 'First Floor', 'Second Floor', 'Third Floor'];
+  // Create floor labels with correct naming convention
+  const floorLabels = ['Ground Floor'];
+  for (let i = 2; i <= 4; i++) {
+    floorLabels.push(`${i}${getOrdinalSuffix(i)} Floor`);
+  }
   
   const container = {
     hidden: { opacity: 0 },
@@ -42,6 +45,22 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
   };
+
+  // Helper function to get ordinal suffix
+  function getOrdinalSuffix(i: number) {
+    const j = i % 10,
+          k = i % 100;
+    if (j === 1 && k !== 11) {
+      return "st";
+    }
+    if (j === 2 && k !== 12) {
+      return "nd";
+    }
+    if (j === 3 && k !== 13) {
+      return "rd";
+    }
+    return "th";
+  }
 
   return (
     <motion.div
@@ -69,7 +88,8 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
               </p>
               
               {Array.from({ length: numStories }).map((_, storyIndex) => {
-                const floorNumber = floorLabels[numStories - storyIndex - 1];
+                // Calculate the correct floor label
+                const floorNumber = storyIndex === numStories - 1 ? floorLabels[0] : floorLabels[numStories - storyIndex - 1];
                 const cumulativeLoad = lateralLoads.slice(0, storyIndex + 1).reduce((sum, load) => sum + load, 0);
                 const totalColumns = columnsPerStory[storyIndex];
                 const effectiveColumns = totalColumns + (totalColumns - 2); // Interior columns count double
@@ -117,17 +137,18 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
           <AccordionContent className="px-4 py-3 bg-white">
             <motion.div variants={item} className="space-y-4">
               <p className="text-framepro-darkgray">
-                Column moments are calculated using the formula: M<sub>col</sub> = V × h/2
+                Column moments are calculated using the formula: M<sub>col</sub> = V × (1/2 × h)
               </p>
               
               {Array.from({ length: numStories }).map((_, storyIndex) => {
-                const floorNumber = floorLabels[numStories - storyIndex - 1];
+                // Calculate the correct floor label
+                const floorNumber = storyIndex === numStories - 1 ? floorLabels[0] : floorLabels[numStories - storyIndex - 1];
                 const storyHeight = storyHeights[storyIndex];
                 const cumulativeLoad = lateralLoads.slice(0, storyIndex + 1).reduce((sum, load) => sum + load, 0);
                 const totalColumns = columnsPerStory[storyIndex];
                 const effectiveColumns = totalColumns + (totalColumns - 2); // Interior columns count double
                 const baseShear = cumulativeLoad / effectiveColumns;
-                const exteriorMoment = baseShear * storyHeight * 0.5;
+                const exteriorMoment = baseShear * (storyHeight * 0.5);
                 const interiorMoment = exteriorMoment * 2;
                 
                 return (
@@ -135,20 +156,20 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                     <h4 className="font-medium mb-2">{floorNumber} Column Moment:</h4>
                     <p className="mb-2">
                       <span className="text-sm bg-framepro-green/10 p-1 rounded">
-                        M<sub>col</sub> = V × h/2
+                        M<sub>col</sub> = V × (1/2 × h)
                       </span>
                     </p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
                       <div className="bg-white p-2 rounded-md shadow-sm">
                         <p className="text-sm font-medium">Exterior Columns:</p>
-                        <p className="mb-1">M = V × h/2</p>
-                        <p>M = {baseShear.toFixed(2)} kN × {storyHeight} m × 0.5 = {exteriorMoment.toFixed(2)} kN·m</p>
+                        <p className="mb-1">M = V × (1/2 × h)</p>
+                        <p>M = {baseShear.toFixed(2)} kN × (0.5 × {storyHeight} m) = {exteriorMoment.toFixed(2)} kN·m</p>
                       </div>
                       <div className="bg-white p-2 rounded-md shadow-sm">
                         <p className="text-sm font-medium">Interior Columns:</p>
-                        <p className="mb-1">M = 2V × h/2</p>
-                        <p>M = {(baseShear * 2).toFixed(2)} kN × {storyHeight} m × 0.5 = {interiorMoment.toFixed(2)} kN·m</p>
+                        <p className="mb-1">M = 2V × (1/2 × h)</p>
+                        <p>M = {(baseShear * 2).toFixed(2)} kN × (0.5 × {storyHeight} m) = {interiorMoment.toFixed(2)} kN·m</p>
                       </div>
                     </div>
                   </div>
@@ -166,16 +187,17 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
           <AccordionContent className="px-4 py-3 bg-white">
             <motion.div variants={item} className="space-y-4">
               <p className="text-framepro-darkgray">
-                Girder moments are calculated using joint equilibrium: ∑M<sub>joint</sub> = 0
+                Girder moments are calculated using joint equilibrium: ∑M = 0
               </p>
               
               {Array.from({ length: numStories }).map((_, storyIndex) => {
-                const storyNumber = numStories - storyIndex;
+                // Calculate the correct floor label
+                const floorNumber = storyIndex === numStories - 1 ? floorLabels[0] : floorLabels[numStories - storyIndex - 1];
                 const spans = spansPerStory[storyIndex];
                 
                 return (
                   <div key={`girder-moment-story-${storyIndex}`} className="bg-framepro-lightgray p-3 rounded-md">
-                    <h4 className="font-medium mb-2">Story {storyNumber} Girder Moments:</h4>
+                    <h4 className="font-medium mb-2">{floorNumber} Girder Moments:</h4>
                     
                     <div className="space-y-3">
                       {Array.from({ length: spans }).map((_, spanIndex) => {
@@ -189,7 +211,7 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                             <p className="text-sm font-medium">Span {spanIndex + 1} ({spanLength} m):</p>
                             <p className="mb-2">
                               <span className="text-sm bg-framepro-green/10 p-1 rounded">
-                                ∑M<sub>joint</sub> = 0
+                                ∑M = 0
                               </span>
                             </p>
                             {spanIndex === 0 ? (
@@ -204,8 +226,13 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                               </p>
                             ) : (
                               <p>
-                                For middle spans, the calculation considers moments from both sides.<br/>
-                                Girder Moment = {moment.toFixed(2)} kN·m
+                                At middle joint:<br/>
+                                (-{leftColumnMoment.toFixed(2)} kN·m) + (-{rightColumnMoment.toFixed(2)} kN·m) + {
+                                  results.girderMoment[storyIndex][spanIndex-1].toFixed(2)
+                                } kN·m + M<sub>girder</sub> = 0<br/>
+                                M<sub>girder</sub> = {leftColumnMoment.toFixed(2)} kN·m + {rightColumnMoment.toFixed(2)} kN·m - {
+                                  results.girderMoment[storyIndex][spanIndex-1].toFixed(2)
+                                } kN·m = {moment.toFixed(2)} kN·m
                               </p>
                             )}
                           </div>
@@ -231,12 +258,13 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
               </p>
               
               {Array.from({ length: numStories }).map((_, storyIndex) => {
-                const storyNumber = numStories - storyIndex;
+                // Calculate the correct floor label
+                const floorNumber = storyIndex === numStories - 1 ? floorLabels[0] : floorLabels[numStories - storyIndex - 1];
                 const spans = spansPerStory[storyIndex];
                 
                 return (
                   <div key={`girder-shear-story-${storyIndex}`} className="bg-framepro-lightgray p-3 rounded-md">
-                    <h4 className="font-medium mb-2">Story {storyNumber} Girder Shears:</h4>
+                    <h4 className="font-medium mb-2">{floorNumber} Girder Shears:</h4>
                     
                     <div className="space-y-3">
                       {Array.from({ length: spans }).map((_, spanIndex) => {
@@ -293,6 +321,10 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                 <p>
                   If the number of spans changes between floors (e.g., first floor has 3 spans, second floor has 2 spans), 
                   the values and frame configuration will adjust accordingly in the calculations.
+                </p>
+                <p className="mt-2">
+                  The column positions remain consistent through all floors. For floors with fewer spans, 
+                  the columns maintain alignment with the corresponding columns from other floors.
                 </p>
               </div>
               
