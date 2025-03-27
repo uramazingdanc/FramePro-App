@@ -41,15 +41,22 @@ const Visualization = () => {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">Frame Analysis Visualization</h1>
           <p className="text-framepro-darkgray mt-2">
-            View the graphical representation of your structure analysis
+            View the graphical representation of your structure analysis with visual indicators for forces and moments
           </p>
         </div>
         
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex justify-end mb-4"
+          className="flex flex-col sm:flex-row sm:justify-between items-center gap-4 mb-6"
         >
+          <div className="bg-blue-50 p-3 rounded-lg max-w-xl">
+            <p className="text-sm text-framepro-darkgray">
+              <span className="font-medium">Visual Guide:</span> Arrows indicate direction and relative magnitude of forces and moments. 
+              Curved arrows represent moments, while straight arrows show shear forces.
+            </p>
+          </div>
+          
           <button 
             onClick={() => navigate('/calculator')}
             className="btn-secondary flex items-center gap-2"

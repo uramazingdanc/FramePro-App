@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
@@ -84,6 +83,9 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     
     // Draw force and moment labels
     drawLabels(ctx, padding);
+    
+    // Draw arrows for forces and moments
+    drawArrows(ctx, padding);
     
   }, [structureData, results]);
   
@@ -228,6 +230,200 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       currentY += storyHeight;
     }
   };
+  
+  const drawArrows = (ctx: CanvasRenderingContext2D, padding: number) => {
+    let currentY = padding;
+    
+    // Draw arrows for each story
+    for (let storyIndex = 0; storyIndex < structureData.numStories; storyIndex++) {
+      const storyHeight = structureData.storyHeights[storyIndex] * scale;
+      const numSpans = structureData.spansPerStory[storyIndex];
+      const spans = structureData.spanMeasurements[storyIndex];
+      
+      // Center the structure horizontally
+      const totalWidth = spans.reduce((sum, span) => sum + span, 0) * scale;
+      const startX = (ctx.canvas.width - totalWidth) / 2;
+      
+      // Draw lateral load arrow at the right side of the structure
+      const lateralLoadArrowX = startX + totalWidth + 30;
+      const lateralLoadArrowY = currentY + storyHeight / 2;
+      
+      // Draw lateral load arrow
+      drawHorizontalArrow(
+        ctx, 
+        lateralLoadArrowX, 
+        lateralLoadArrowY, 
+        lateralLoadArrowX - 30, 
+        lateralLoadArrowY, 
+        '#FF5722', 
+        6
+      );
+      
+      // Label the lateral load
+      ctx.fillStyle = '#FF5722';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('Lateral Load', lateralLoadArrowX + 5, lateralLoadArrowY - 5);
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'center';
+      
+      // Draw column shear arrows
+      let columnX = startX;
+      for (let columnIndex = 0; columnIndex <= numSpans; columnIndex++) {
+        if (results.columnShear[storyIndex] && results.columnShear[storyIndex][columnIndex] !== undefined) {
+          // Draw column shear arrow
+          const arrowY = currentY + storyHeight / 3;
+          const arrowLength = 20;
+          
+          drawHorizontalArrow(
+            ctx,
+            columnX - arrowLength, 
+            arrowY, 
+            columnX, 
+            arrowY, 
+            '#0076FF',
+            3
+          );
+        }
+        
+        // Draw column moment curved arrows
+        if (results.columnMoment[storyIndex] && results.columnMoment[storyIndex][columnIndex] !== undefined) {
+          // Draw curved arrow for column moment
+          const momentY = currentY + storyHeight / 3 + 20;
+          drawCurvedArrow(ctx, columnX, momentY, 15, '#FF3B30');
+        }
+        
+        // Move to next column position
+        if (columnIndex < numSpans) {
+          columnX += spans[columnIndex] * scale;
+        }
+      }
+      
+      // Draw girder shear and moment arrows
+      columnX = startX;
+      for (let spanIndex = 0; spanIndex < numSpans; spanIndex++) {
+        const spanWidth = spans[spanIndex] * scale;
+        const spanMidX = columnX + spanWidth / 2;
+        
+        if (results.girderShear[storyIndex] && results.girderShear[storyIndex][spanIndex] !== undefined) {
+          // Draw girder shear arrow
+          const arrowY = currentY + 5;
+          const arrowLength = 15;
+          
+          drawVerticalArrow(
+            ctx,
+            spanMidX, 
+            currentY - arrowLength, 
+            spanMidX, 
+            currentY, 
+            '#34C759',
+            3
+          );
+        }
+        
+        // Draw girder moment curved arrows
+        if (results.girderMoment[storyIndex] && results.girderMoment[storyIndex][spanIndex] !== undefined) {
+          // Draw curved arrow for girder moment
+          drawCurvedArrow(ctx, spanMidX, currentY + 10, 12, '#FF9500', true); // downward arrow
+        }
+        
+        columnX += spanWidth;
+      }
+      
+      // Move to the next story
+      currentY += storyHeight;
+    }
+  };
+  
+  const drawHorizontalArrow = (
+    ctx: CanvasRenderingContext2D, 
+    fromX: number, 
+    fromY: number, 
+    toX: number, 
+    toY: number, 
+    color: string,
+    headSize: number = 8
+  ) => {
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Arrow head
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headSize, toY - headSize / 2);
+    ctx.lineTo(toX - headSize, toY + headSize / 2);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
+  
+  const drawVerticalArrow = (
+    ctx: CanvasRenderingContext2D, 
+    fromX: number, 
+    fromY: number, 
+    toX: number, 
+    toY: number, 
+    color: string,
+    headSize: number = 8
+  ) => {
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Arrow head
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headSize / 2, toY - headSize);
+    ctx.lineTo(toX + headSize / 2, toY - headSize);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
+  
+  const drawCurvedArrow = (
+    ctx: CanvasRenderingContext2D, 
+    centerX: number, 
+    centerY: number, 
+    radius: number, 
+    color: string,
+    clockwise: boolean = false
+  ) => {
+    const startAngle = clockwise ? Math.PI : 0;
+    const endAngle = clockwise ? 0 : Math.PI;
+    
+    // Draw arc
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle, !clockwise);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Arrow head
+    const headX = clockwise ? centerX + radius : centerX - radius;
+    const headY = centerY;
+    const headSize = 6;
+    
+    ctx.beginPath();
+    if (clockwise) {
+      ctx.moveTo(headX, headY);
+      ctx.lineTo(headX - headSize, headY - headSize / 2);
+      ctx.lineTo(headX - headSize, headY + headSize / 2);
+    } else {
+      ctx.moveTo(headX, headY);
+      ctx.lineTo(headX + headSize, headY - headSize / 2);
+      ctx.lineTo(headX + headSize, headY + headSize / 2);
+    }
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
 
   return (
     <motion.div
@@ -267,6 +463,20 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
         <div className="flex items-center">
           <div className="w-3 h-3 rounded-full bg-[#FF9500] mr-2"></div>
           <span>GM: Girder Moment (kN·m)</span>
+        </div>
+      </div>
+      
+      <div className="mt-4 flex justify-center">
+        <div className="w-full max-w-2xl p-3 border border-gray-200 rounded-lg bg-gray-50">
+          <div className="text-sm text-framepro-darkgray">
+            <p className="mb-2 font-medium">Legend:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Horizontal arrows (→) represent column shear forces</li>
+              <li>Vertical arrows (↓) represent girder shear forces</li>
+              <li>Curved arrows (↺/↻) represent moments</li>
+              <li>Larger arrow at right represents the lateral load</li>
+            </ul>
+          </div>
         </div>
       </div>
     </motion.div>
