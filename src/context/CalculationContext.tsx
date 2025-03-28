@@ -30,8 +30,8 @@ const defaultStructureData: StructureData = {
   storyHeights: [3, 3],
   structureType: 'REGULAR',
   spansPerStory: [2, 2],
-  spanMeasurements: [[4, 4], [4, 4]],
   lateralLoads: [10, 10],
+  spanMeasurements: [[4, 4], [4, 4]],
 };
 
 const CalculationContext = createContext<CalculationContextType | undefined>(undefined);
@@ -90,27 +90,51 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         
         // For the first joint (leftmost)
         if (spanIndex === 0) {
-          // The sum of moments at the joint must be zero
-          // At the left end, only the column moment and the girder moment are present
-          // Following the convention: negative for counterclockwise (column moment) and positive for clockwise (girder moment)
+          // REVISED CALCULATION:
+          // For the first span, we need to consider all column moments above this joint
+          // If we're at the top floor, there's only the current column moment
+          // If we're at a lower floor, we add the column moments from floors above
+          let cumulativeColumnMoment = storyColumnMoment[spanIndex];
+          
+          // If not at the top floor, add column moments from floors above
+          if (storyIndex > 0) {
+            for (let upperStoryIndex = 0; upperStoryIndex < storyIndex; upperStoryIndex++) {
+              // Check if the column exists in the upper story (may have different number of spans)
+              if (spanIndex < columnMoment[upperStoryIndex].length) {
+                cumulativeColumnMoment += columnMoment[upperStoryIndex][spanIndex];
+              }
+            }
+          }
+          
+          // The girder moment must balance the cumulative column moment
           // -Column Moment + Girder Moment = 0
-          // Therefore, Girder Moment = Column Moment
-          girderMomentValue = storyColumnMoment[spanIndex];
+          girderMomentValue = cumulativeColumnMoment;
         } 
         // For all other joints 
         else {
-          // At internal joints, we have:
-          // - The column moment (negative/counterclockwise) at this joint
-          // - The previous span's girder moment (positive/clockwise)
-          // - The current span's girder moment (to be calculated, positive/clockwise)
+          // REVISED CALCULATION:
+          // At internal joints, we need to consider:
+          // 1. The cumulative column moment at this joint (from all floors above)
+          // 2. The previous span's girder moment
           
-          // Applying ∑M = 0 at the joint:
-          // -Column Moment + Previous Girder Moment + Current Girder Moment = 0
-          // Current Girder Moment = Column Moment - Previous Girder Moment
+          // Calculate cumulative column moment at this joint
+          let cumulativeColumnMoment = storyColumnMoment[spanIndex];
           
-          girderMomentValue = storyColumnMoment[spanIndex] - storyGirderMoment[spanIndex - 1];
+          // If not at the top floor, add column moments from floors above
+          if (storyIndex > 0) {
+            for (let upperStoryIndex = 0; upperStoryIndex < storyIndex; upperStoryIndex++) {
+              // Check if the column exists in the upper story
+              if (spanIndex < columnMoment[upperStoryIndex].length) {
+                cumulativeColumnMoment += columnMoment[upperStoryIndex][spanIndex];
+              }
+            }
+          }
           
-          // Handle case where calculated moment would be negative (sign reversal shouldn't happen in this method)
+          // Applying the revised equation: -CumulativeColumnMoment + PreviousGirderMoment + CurrentGirderMoment = 0
+          // CurrentGirderMoment = CumulativeColumnMoment - PreviousGirderMoment
+          girderMomentValue = cumulativeColumnMoment - storyGirderMoment[spanIndex - 1];
+          
+          // Handle case where calculated moment would be negative
           girderMomentValue = Math.abs(girderMomentValue);
         }
         
@@ -119,26 +143,30 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         // Step 4: Calculate girder shear from girder moments
         const spanLength = spanMeasurements[storyIndex][spanIndex];
         
-        // Girder shear = Sum of girder moments / span length
-        // For first and last spans, shear is derived from one end moment
-        // For middle spans, we use both end moments
+        // Girder shear calculation
         let leftMoment = girderMomentValue;
         let rightMoment = 0;
         
         if (spanIndex < spansPerStory[storyIndex] - 1) {
-          // If not the last span, calculate the right moment
-          // The right moment would be the same as the left moment of the next span
-          // For consistency, we'll calculate this based on our equilibrium equation:
-          // -Column Moment(next) + Current Girder Moment(right) + Next Girder Moment(left) = 0
-          // Current Girder Moment(right) = Column Moment(next) - Next Girder Moment(left)
-          
-          // But since we haven't calculated the next girder moment yet,
-          // and we want the right moment of current span to be consistent,
-          // we'll use the same value as the left moment
+          // If not the last span, the right moment will be calculated in the next span
+          // For consistency, we use the same value
           rightMoment = leftMoment;
         } else {
-          // For the last span, the right moment is equal to the column moment at the right
-          rightMoment = storyColumnMoment[spanIndex + 1];
+          // For the last span, calculate the cumulative column moment at the rightmost joint
+          let rightColumnIndex = spanIndex + 1;
+          let cumulativeRightColumnMoment = storyColumnMoment[rightColumnIndex];
+          
+          // If not at the top floor, add column moments from floors above
+          if (storyIndex > 0) {
+            for (let upperStoryIndex = 0; upperStoryIndex < storyIndex; upperStoryIndex++) {
+              // Check if the column exists in the upper story
+              if (rightColumnIndex < columnMoment[upperStoryIndex].length) {
+                cumulativeRightColumnMoment += columnMoment[upperStoryIndex][rightColumnIndex];
+              }
+            }
+          }
+          
+          rightMoment = cumulativeRightColumnMoment;
         }
         
         const girderShearValue = (leftMoment + rightMoment) / spanLength;
