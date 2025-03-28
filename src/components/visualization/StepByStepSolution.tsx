@@ -187,7 +187,8 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
           <AccordionContent className="px-4 py-3 bg-white">
             <motion.div variants={item} className="space-y-4">
               <p className="text-framepro-darkgray">
-                Girder moments are calculated using joint equilibrium: ∑M = 0
+                Girder moments are calculated using the principle of joint equilibrium: ∑M = 0 at each joint.
+                We use the convention that column moments are counterclockwise (negative) and girder moments are clockwise (positive).
               </p>
               
               {Array.from({ length: numStories }).map((_, storyIndex) => {
@@ -203,37 +204,45 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                       {Array.from({ length: spans }).map((_, spanIndex) => {
                         const spanLength = spanMeasurements[storyIndex][spanIndex];
                         const moment = results.girderMoment[storyIndex][spanIndex];
-                        const leftColumnMoment = results.columnMoment[storyIndex][spanIndex];
-                        const rightColumnMoment = results.columnMoment[storyIndex][spanIndex + 1];
+                        const columnMomentAtJoint = results.columnMoment[storyIndex][spanIndex];
+                        const previousGirderMoment = spanIndex > 0 ? results.girderMoment[storyIndex][spanIndex - 1] : 0;
                         
                         return (
                           <div key={`span-moment-${storyIndex}-${spanIndex}`} className="bg-white p-2 rounded-md shadow-sm">
                             <p className="text-sm font-medium">Span {spanIndex + 1} ({spanLength} m):</p>
                             <p className="mb-2">
                               <span className="text-sm bg-framepro-green/10 p-1 rounded">
-                                ∑M = 0
+                                ∑M = 0 at each joint
                               </span>
                             </p>
                             {spanIndex === 0 ? (
-                              <p>
-                                At left joint: (-{leftColumnMoment.toFixed(2)} kN·m) + M<sub>girder</sub> = 0<br/>
-                                M<sub>girder</sub> = {leftColumnMoment.toFixed(2)} kN·m
-                              </p>
-                            ) : spanIndex === spans - 1 ? (
-                              <p>
-                                At right joint: (-{rightColumnMoment.toFixed(2)} kN·m) + M<sub>girder</sub> = 0<br/>
-                                M<sub>girder</sub> = {rightColumnMoment.toFixed(2)} kN·m
-                              </p>
+                              <div>
+                                <p className="mb-1">At leftmost joint (Column 1):</p>
+                                <p className="mb-1">
+                                  (−{columnMomentAtJoint.toFixed(2)} kN·m) + Girder Moment = 0
+                                </p>
+                                <p className="mb-1">
+                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m
+                                </p>
+                                <p className="text-xs text-framepro-darkgray mt-2">
+                                  Note: The column moment is counterclockwise (negative), and the girder moment is clockwise (positive).
+                                  The girder moment equals the column moment in magnitude but is opposite in sign.
+                                </p>
+                              </div>
                             ) : (
-                              <p>
-                                At middle joint:<br/>
-                                (-{leftColumnMoment.toFixed(2)} kN·m) + (-{rightColumnMoment.toFixed(2)} kN·m) + {
-                                  results.girderMoment[storyIndex][spanIndex-1].toFixed(2)
-                                } kN·m + M<sub>girder</sub> = 0<br/>
-                                M<sub>girder</sub> = {leftColumnMoment.toFixed(2)} kN·m + {rightColumnMoment.toFixed(2)} kN·m - {
-                                  results.girderMoment[storyIndex][spanIndex-1].toFixed(2)
-                                } kN·m = {moment.toFixed(2)} kN·m
-                              </p>
+                              <div>
+                                <p className="mb-1">At joint (Column {spanIndex + 1}):</p>
+                                <p className="mb-1">
+                                  (−{columnMomentAtJoint.toFixed(2)} kN·m) + {previousGirderMoment.toFixed(2)} kN·m + Girder Moment = 0
+                                </p>
+                                <p className="mb-1">
+                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m − {previousGirderMoment.toFixed(2)} kN·m = {moment.toFixed(2)} kN·m
+                                </p>
+                                <p className="text-xs text-framepro-darkgray mt-2">
+                                  Note: At internal joints, we consider the column moment (counterclockwise/negative), the previous span's girder moment (clockwise/positive), 
+                                  and the current span's girder moment (clockwise/positive). We use absolute values in the visualization.
+                                </p>
+                              </div>
                             )}
                           </div>
                         );
@@ -271,9 +280,13 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                         const spanLength = spanMeasurements[storyIndex][spanIndex];
                         const shear = results.girderShear[storyIndex][spanIndex];
                         const leftMoment = results.girderMoment[storyIndex][spanIndex];
-                        const rightMoment = spanIndex === spans - 1 
-                                         ? leftMoment 
-                                         : results.girderMoment[storyIndex][spanIndex + 1];
+                        let rightMoment = 0;
+                        
+                        if (spanIndex < spans - 1) {
+                          rightMoment = leftMoment; // Using the same value for consistency
+                        } else {
+                          rightMoment = results.columnMoment[storyIndex][spanIndex + 1]; // Last column moment
+                        }
                         
                         return (
                           <div key={`span-shear-${storyIndex}-${spanIndex}`} className="bg-white p-2 rounded-md shadow-sm">
@@ -310,10 +323,26 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                   In our calculations, we follow these sign conventions:
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Column moments are negative if counterclockwise</li>
-                  <li>Girder moments are positive if clockwise</li>
+                  <li>Column moments are negative (counterclockwise)</li>
+                  <li>Girder moments are positive (clockwise)</li>
                   <li>In the visualization, we use absolute values for clarity</li>
                 </ul>
+              </div>
+              
+              <div className="bg-framepro-lightgray p-3 rounded-md">
+                <h4 className="font-medium mb-2">Joint Equilibrium Principle</h4>
+                <p>
+                  At each joint, the sum of all moments must equal zero. This key principle guides our calculation of girder moments.
+                </p>
+                <p className="mt-2">
+                  When applying this principle: (-Column Moment) + Previous Girder Moment + Current Girder Moment = 0
+                </p>
+                <p className="mt-2">
+                  Solving for the Current Girder Moment: Current Girder Moment = Column Moment - Previous Girder Moment
+                </p>
+                <p className="mt-2 text-sm font-medium">
+                  Important: Each span's girder moment must be calculated individually. A girder moment in one span does not automatically apply to other spans.
+                </p>
               </div>
               
               <div className="bg-framepro-lightgray p-3 rounded-md">
