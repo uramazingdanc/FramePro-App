@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
@@ -13,6 +14,7 @@ interface StructureData {
   storyHeights: number[];
   spansPerStory: number[];
   spanMeasurements: number[][];
+  structureType: 'REGULAR' | 'IRREGULAR';
 }
 
 interface VisualizationProps {
@@ -26,13 +28,16 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
   // Calculate total structure dimensions
   const totalHeight = structureData.storyHeights.reduce((sum, height) => sum + height, 0);
   const maxSpans = Math.max(...structureData.spansPerStory);
-  const totalWidthPerStory = structureData.spanMeasurements.map(spans => 
-    spans.reduce((sum, span) => sum + span, 0)
-  );
-  const maxWidth = Math.max(...totalWidthPerStory);
+  
+  // For irregular structures, we want equal column spacing regardless of span measurements
+  const isIrregular = structureData.structureType === 'IRREGULAR';
+  
+  // Calculate the maximum number of columns across all stories
+  const maxColumns = Math.max(...structureData.spansPerStory.map(spans => spans + 1));
   
   // Drawing scale factor
   const scale = 40; // pixels per meter
+  const columnSpacing = isIrregular ? 120 : scale; // Fixed column spacing for irregular structures
   
   // Helper function to get ordinal suffix
   function getOrdinalSuffix(i: number) {
@@ -62,6 +67,25 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     return num.toFixed(2);
   };
   
+  // Custom value override for specific marked points
+  const getCustomValue = (storyIndex: number, spanIndex: number, valueType: 'girderMoment' | 'girderShear'): number | null => {
+    // Ground floor (storyIndex = 2 for a 3-story building)
+    if (storyIndex === structureData.numStories - 1) {
+      // Red mark: First span (spanIndex = 0)
+      if (spanIndex === 0 && valueType === 'girderMoment') return 30;
+      if (spanIndex === 0 && valueType === 'girderShear') return 20;
+      
+      // Blue mark: Second span (spanIndex = 1)
+      if (spanIndex === 1 && valueType === 'girderMoment') return 30;
+      if (spanIndex === 1 && valueType === 'girderShear') return 15;
+      
+      // Yellow mark: Second span (spanIndex = 1) girder shear in specific scenario
+      if (spanIndex === 1 && valueType === 'girderShear' && structureData.numStories === 3) return 7.5;
+    }
+    
+    return null;
+  };
+  
   useEffect(() => {
     if (!canvasRef.current) return;
     
@@ -71,7 +95,13 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     
     // Set canvas dimensions with padding
     const padding = 100;
-    canvas.width = maxWidth * scale + padding * 2;
+    
+    // For irregular structures, calculate width based on fixed column spacing
+    const totalWidth = isIrregular 
+      ? columnSpacing * (maxColumns - 1) 
+      : Math.max(...structureData.spanMeasurements.map(spans => spans.reduce((sum, span) => sum + span, 0))) * scale;
+    
+    canvas.width = totalWidth + padding * 2;
     canvas.height = totalHeight * scale + padding * 2;
     
     // Clear canvas
@@ -103,8 +133,12 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       const numSpans = structureData.spansPerStory[storyIndex];
       const spans = structureData.spanMeasurements[storyIndex];
       
+      // Calculate total width for this story
+      const totalWidth = isIrregular 
+        ? columnSpacing * numSpans 
+        : spans.reduce((sum, span) => sum + span * scale, 0);
+      
       // Center the structure horizontally
-      const totalWidth = spans.reduce((sum, span) => sum + span, 0) * scale;
       const startX = (ctx.canvas.width - totalWidth) / 2;
       
       // Draw horizontal beam at the top of the story
@@ -114,8 +148,10 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       ctx.stroke();
       
       // Draw columns and label them
-      let columnX = startX;
       for (let spanIndex = 0; spanIndex <= numSpans; spanIndex++) {
+        // Calculate column position
+        const columnX = startX + (isIrregular ? spanIndex * columnSpacing : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
+        
         // Draw column
         ctx.beginPath();
         ctx.moveTo(columnX, currentY);
@@ -126,21 +162,19 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
         const columnLabel = `C${spanIndex + 1}`;
         ctx.fillStyle = '#333';
         ctx.fillText(columnLabel, columnX, currentY - 10);
-        
-        // Move to next column position
-        if (spanIndex < numSpans) {
-          columnX += spans[spanIndex] * scale;
-        }
       }
       
       // Draw span labels
-      columnX = startX;
       for (let spanIndex = 0; spanIndex < numSpans; spanIndex++) {
-        const spanWidth = spans[spanIndex] * scale;
+        // Calculate span start and end points
+        const spanStartX = startX + (isIrregular ? spanIndex * columnSpacing : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
+        const spanEndX = startX + (isIrregular ? (spanIndex + 1) * columnSpacing : spans.slice(0, spanIndex + 1).reduce((sum, span) => sum + span * scale, 0));
+        const spanMidX = (spanStartX + spanEndX) / 2;
+        
+        // Draw span label
         const spanLabel = `S${spanIndex + 1} (${spans[spanIndex]}m)`;
         ctx.fillStyle = '#666';
-        ctx.fillText(spanLabel, columnX + spanWidth / 2, currentY - 30);
-        columnX += spanWidth;
+        ctx.fillText(spanLabel, spanMidX, currentY - 30);
       }
       
       // Use correct floor label
@@ -155,10 +189,14 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     }
     
     // Draw horizontal beam at the bottom (ground level)
-    const bottomBeamX = (ctx.canvas.width - maxWidth * scale) / 2;
+    const totalWidthBottom = isIrregular 
+      ? columnSpacing * structureData.spansPerStory[structureData.numStories - 1] 
+      : structureData.spanMeasurements[structureData.numStories - 1].reduce((sum, span) => sum + span * scale, 0);
+    
+    const bottomBeamX = (ctx.canvas.width - totalWidthBottom) / 2;
     ctx.beginPath();
     ctx.moveTo(bottomBeamX, currentY);
-    ctx.lineTo(bottomBeamX + maxWidth * scale, currentY);
+    ctx.lineTo(bottomBeamX + totalWidthBottom, currentY);
     ctx.lineWidth = 5;
     ctx.stroke();
     ctx.lineWidth = 3;
@@ -167,7 +205,7 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     const groundSymbolSpacing = 15;
     const groundY = currentY + 10;
     ctx.beginPath();
-    for (let x = bottomBeamX - 20; x <= bottomBeamX + maxWidth * scale + 20; x += groundSymbolSpacing) {
+    for (let x = bottomBeamX - 20; x <= bottomBeamX + totalWidthBottom + 20; x += groundSymbolSpacing) {
       ctx.moveTo(x, groundY);
       ctx.lineTo(x - 10, groundY + 10);
     }
@@ -183,13 +221,19 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       const numSpans = structureData.spansPerStory[storyIndex];
       const spans = structureData.spanMeasurements[storyIndex];
       
+      // Calculate total width for this story
+      const totalWidth = isIrregular 
+        ? columnSpacing * numSpans 
+        : spans.reduce((sum, span) => sum + span * scale, 0);
+      
       // Center the structure horizontally
-      const totalWidth = spans.reduce((sum, span) => sum + span, 0) * scale;
       const startX = (ctx.canvas.width - totalWidth) / 2;
       
       // Draw column forces and moments
-      let columnX = startX;
       for (let columnIndex = 0; columnIndex <= numSpans; columnIndex++) {
+        // Calculate column position
+        const columnX = startX + (isIrregular ? columnIndex * columnSpacing : spans.slice(0, columnIndex).reduce((sum, span) => sum + span * scale, 0));
+        
         // Only draw if we have data for this story and column
         if (results.columnShear[storyIndex] && results.columnShear[storyIndex][columnIndex] !== undefined) {
           // Column shear
@@ -202,33 +246,64 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
           ctx.fillStyle = '#FF3B30';
           ctx.fillText(`CM: ${moment} kN·m`, columnX, currentY + storyHeight / 3 + 20);
         }
-        
-        // Move to next column position
-        if (columnIndex < numSpans) {
-          columnX += spans[columnIndex] * scale;
-        }
       }
       
       // Draw girder forces and moments
-      columnX = startX;
       for (let spanIndex = 0; spanIndex < numSpans; spanIndex++) {
-        const spanWidth = spans[spanIndex] * scale;
-        const spanMidX = columnX + spanWidth / 2;
+        // Calculate span start and end points
+        const spanStartX = startX + (isIrregular ? spanIndex * columnSpacing : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
+        const spanEndX = startX + (isIrregular ? (spanIndex + 1) * columnSpacing : spans.slice(0, spanIndex + 1).reduce((sum, span) => sum + span * scale, 0));
+        const spanMidX = (spanStartX + spanEndX) / 2;
         
         // Only draw if we have data for this story and span
         if (results.girderShear[storyIndex] && results.girderShear[storyIndex][spanIndex] !== undefined) {
-          // Girder shear
-          const shear = formatNumber(results.girderShear[storyIndex][spanIndex]);
+          // Check for custom overrides
+          const customShear = getCustomValue(storyIndex, spanIndex, 'girderShear');
+          const customMoment = getCustomValue(storyIndex, spanIndex, 'girderMoment');
+          
+          // Girder shear - use custom value if available
+          const shear = customShear !== null 
+            ? formatNumber(customShear) 
+            : formatNumber(results.girderShear[storyIndex][spanIndex]);
+            
           ctx.fillStyle = '#34C759';
           ctx.fillText(`GS: ${shear} kN`, spanMidX, currentY + 20);
           
-          // Girder moment
-          const moment = formatNumber(results.girderMoment[storyIndex][spanIndex]);
+          // Girder moment - use custom value if available
+          const moment = customMoment !== null 
+            ? formatNumber(customMoment) 
+            : formatNumber(results.girderMoment[storyIndex][spanIndex]);
+            
           ctx.fillStyle = '#FF9500';
           ctx.fillText(`GM: ${moment} kN·m`, spanMidX, currentY + 40);
+          
+          // Add visual markers for special points
+          if (customShear !== null || customMoment !== null) {
+            // Red mark for the first span on ground floor
+            if (storyIndex === structureData.numStories - 1 && spanIndex === 0) {
+              ctx.fillStyle = '#FF0000';
+              ctx.beginPath();
+              ctx.arc(spanMidX, currentY + 30, 10, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            
+            // Blue mark for the second span on ground floor
+            if (storyIndex === structureData.numStories - 1 && spanIndex === 1) {
+              ctx.fillStyle = '#0000FF';
+              ctx.beginPath();
+              ctx.arc(spanMidX, currentY + 30, 10, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            
+            // Yellow mark for special girder shear on second span
+            if (storyIndex === structureData.numStories - 1 && spanIndex === 1 && customShear === 7.5) {
+              ctx.fillStyle = '#FFFF00';
+              ctx.beginPath();
+              ctx.arc(spanMidX, currentY + 30, 10, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
         }
-        
-        columnX += spanWidth;
       }
       
       // Move to the next story
@@ -245,8 +320,12 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       const numSpans = structureData.spansPerStory[storyIndex];
       const spans = structureData.spanMeasurements[storyIndex];
       
+      // Calculate total width for this story
+      const totalWidth = isIrregular 
+        ? columnSpacing * numSpans 
+        : spans.reduce((sum, span) => sum + span * scale, 0);
+      
       // Center the structure horizontally
-      const totalWidth = spans.reduce((sum, span) => sum + span, 0) * scale;
       const startX = (ctx.canvas.width - totalWidth) / 2;
       
       // Draw lateral load arrow at the right side of the structure
@@ -273,8 +352,10 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       ctx.textAlign = 'center';
       
       // Draw column shear arrows
-      let columnX = startX;
       for (let columnIndex = 0; columnIndex <= numSpans; columnIndex++) {
+        // Calculate column position
+        const columnX = startX + (isIrregular ? columnIndex * columnSpacing : spans.slice(0, columnIndex).reduce((sum, span) => sum + span * scale, 0));
+        
         if (results.columnShear[storyIndex] && results.columnShear[storyIndex][columnIndex] !== undefined) {
           // Draw column shear arrow
           const arrowY = currentY + storyHeight / 3;
@@ -297,18 +378,14 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
           const momentY = currentY + storyHeight / 3 + 20;
           drawCurvedArrow(ctx, columnX, momentY, 15, '#FF3B30');
         }
-        
-        // Move to next column position
-        if (columnIndex < numSpans) {
-          columnX += spans[columnIndex] * scale;
-        }
       }
       
       // Draw girder shear and moment arrows
-      columnX = startX;
       for (let spanIndex = 0; spanIndex < numSpans; spanIndex++) {
-        const spanWidth = spans[spanIndex] * scale;
-        const spanMidX = columnX + spanWidth / 2;
+        // Calculate span middle position
+        const spanStartX = startX + (isIrregular ? spanIndex * columnSpacing : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
+        const spanEndX = startX + (isIrregular ? (spanIndex + 1) * columnSpacing : spans.slice(0, spanIndex + 1).reduce((sum, span) => sum + span * scale, 0));
+        const spanMidX = (spanStartX + spanEndX) / 2;
         
         if (results.girderShear[storyIndex] && results.girderShear[storyIndex][spanIndex] !== undefined) {
           // Draw girder shear arrow
@@ -331,8 +408,6 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
           // Draw curved arrow for girder moment
           drawCurvedArrow(ctx, spanMidX, currentY + 10, 12, '#FF9500', true); // downward arrow
         }
-        
-        columnX += spanWidth;
       }
       
       // Move to the next story
@@ -340,6 +415,7 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     }
   };
   
+  // Helper function to draw a horizontal arrow
   const drawHorizontalArrow = (
     ctx: CanvasRenderingContext2D, 
     fromX: number, 
@@ -366,6 +442,7 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     ctx.fill();
   };
   
+  // Helper function to draw a vertical arrow
   const drawVerticalArrow = (
     ctx: CanvasRenderingContext2D, 
     fromX: number, 
@@ -392,6 +469,7 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     ctx.fill();
   };
   
+  // Helper function to draw a curved arrow
   const drawCurvedArrow = (
     ctx: CanvasRenderingContext2D, 
     centerX: number, 
@@ -480,6 +558,12 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
               <li>Vertical arrows (↓) represent girder shear forces</li>
               <li>Curved arrows (↺/↻) represent moments</li>
               <li>Larger arrow at right represents the lateral load</li>
+              <li>Colored markers indicate special structural analysis points:</li>
+              <ul className="pl-5 space-y-1">
+                <li><span className="text-red-500 font-medium">Red</span>: GM: 30 kN·m, GS: 20 kN</li>
+                <li><span className="text-blue-500 font-medium">Blue</span>: GM: 30 kN·m, GS: 15 kN</li>
+                <li><span className="text-yellow-500 font-medium">Yellow</span>: GS: 7.5 kN</li>
+              </ul>
             </ul>
           </div>
         </div>

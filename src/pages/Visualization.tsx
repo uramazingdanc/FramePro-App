@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import StructureVisualization from '@/components/visualization/StructureVisualization';
 import StepByStepSolution from '@/components/visualization/StepByStepSolution';
 import { useCalculation } from '@/context/CalculationContext';
+import { AlertCircle } from 'lucide-react';
 
 const Visualization = () => {
   const navigate = useNavigate();
@@ -16,9 +17,7 @@ const Visualization = () => {
       <Layout>
         <div className="container mx-auto px-4 py-12 min-h-[60vh] flex flex-col items-center justify-center">
           <div className="max-w-md mx-auto text-center glassmorphism p-8 rounded-xl">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-framepro-darkgray">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-            </svg>
+            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-framepro-darkgray" />
             <h2 className="text-2xl font-medium mb-4">No Calculations Yet</h2>
             <p className="text-framepro-darkgray mb-6">
               You need to run a calculation first before viewing visualizations.
@@ -53,7 +52,7 @@ const Visualization = () => {
           <div className="bg-blue-50 p-3 rounded-lg max-w-xl">
             <p className="text-sm text-framepro-darkgray">
               <span className="font-medium">Visual Guide:</span> Arrows indicate direction and relative magnitude of forces and moments. 
-              Curved arrows represent moments, while straight arrows show shear forces.
+              Colored markers highlight key structural analysis points with specific values.
             </p>
           </div>
           
