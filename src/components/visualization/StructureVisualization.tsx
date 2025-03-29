@@ -57,6 +57,11 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     return `${floorNumber}${getOrdinalSuffix(floorNumber)} Floor`;
   };
   
+  // Helper function to format numbers to 2 decimal places
+  const formatNumber = (num: number): string => {
+    return num.toFixed(2);
+  };
+  
   useEffect(() => {
     if (!canvasRef.current) return;
     
@@ -188,12 +193,12 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
         // Only draw if we have data for this story and column
         if (results.columnShear[storyIndex] && results.columnShear[storyIndex][columnIndex] !== undefined) {
           // Column shear
-          const shear = results.columnShear[storyIndex][columnIndex].toFixed(1);
+          const shear = formatNumber(results.columnShear[storyIndex][columnIndex]);
           ctx.fillStyle = '#0076FF';
           ctx.fillText(`CS: ${shear} kN`, columnX, currentY + storyHeight / 3);
           
           // Column moment
-          const moment = results.columnMoment[storyIndex][columnIndex].toFixed(1);
+          const moment = formatNumber(results.columnMoment[storyIndex][columnIndex]);
           ctx.fillStyle = '#FF3B30';
           ctx.fillText(`CM: ${moment} kN·m`, columnX, currentY + storyHeight / 3 + 20);
         }
@@ -213,12 +218,12 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
         // Only draw if we have data for this story and span
         if (results.girderShear[storyIndex] && results.girderShear[storyIndex][spanIndex] !== undefined) {
           // Girder shear
-          const shear = results.girderShear[storyIndex][spanIndex].toFixed(1);
+          const shear = formatNumber(results.girderShear[storyIndex][spanIndex]);
           ctx.fillStyle = '#34C759';
           ctx.fillText(`GS: ${shear} kN`, spanMidX, currentY + 20);
           
           // Girder moment
-          const moment = results.girderMoment[storyIndex][spanIndex].toFixed(1);
+          const moment = formatNumber(results.girderMoment[storyIndex][spanIndex]);
           ctx.fillStyle = '#FF9500';
           ctx.fillText(`GM: ${moment} kN·m`, spanMidX, currentY + 40);
         }

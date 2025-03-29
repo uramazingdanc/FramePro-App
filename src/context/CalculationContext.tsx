@@ -41,6 +41,11 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [calculationResults, setCalculationResults] = useState<CalculationResults | null>(null);
   const [hasCalculated, setHasCalculated] = useState(false);
   
+  // Helper function to round to 2 decimal places
+  const roundToTwoDecimal = (num: number): number => {
+    return Math.round(num * 100) / 100;
+  };
+  
   const calculateResults = (data: StructureData) => {
     const { numStories, storyHeights, spansPerStory, spanMeasurements, lateralLoads } = data;
     
@@ -75,98 +80,92 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         // Interior columns have shear = 2V
         const isExterior = columnIndex === 0 || columnIndex === numColumns - 1;
         const columnShearForce = isExterior ? exteriorColumnShear : exteriorColumnShear * 2;
-        storyColumnShear.push(columnShearForce);
+        storyColumnShear.push(roundToTwoDecimal(columnShearForce));
         
         // Step 2: Calculate column moment (M_col = V × h/2)
         // Using the explicit formula with half the height as requested
         const columnMomentValue = columnShearForce * (storyHeights[storyIndex] * 0.5);
-        storyColumnMoment.push(columnMomentValue);
+        storyColumnMoment.push(roundToTwoDecimal(columnMomentValue));
       }
       
       // Step 3: Calculate girder moments based on joint equilibrium
       for (let spanIndex = 0; spanIndex < spansPerStory[storyIndex]; spanIndex++) {
         let girderMomentValue = 0;
         
-        // For each span, get the girder moment based on the correct joint equilibrium
+        // For first span (left-most span)
         if (spanIndex === 0) {
-          // For the first span of any story:
-          // The girder moment is equal to the sum of column moments at this joint
-          // from the current story and all stories above
+          // Sum of column moments at this joint from the current story and all stories above
           let totalColumnMoment = 0;
           
-          // Add column moments from current story and all stories above
-          for (let upperStoryIndex = 0; upperStoryIndex <= storyIndex; upperStoryIndex++) {
-            if (upperStoryIndex === storyIndex) {
-              // Current story's column moment for this column
-              totalColumnMoment += storyColumnMoment[spanIndex];
-            } else if (columnMoment[upperStoryIndex] && spanIndex < columnMoment[upperStoryIndex].length) {
-              // Add column moments from stories above for this column
+          // Current story's column moment
+          totalColumnMoment += storyColumnMoment[spanIndex];
+          
+          // Add column moments from stories above for this column
+          for (let upperStoryIndex = 0; upperStoryIndex < storyIndex; upperStoryIndex++) {
+            if (columnMoment[upperStoryIndex] && spanIndex < columnMoment[upperStoryIndex].length) {
               totalColumnMoment += columnMoment[upperStoryIndex][spanIndex];
             }
           }
           
           girderMomentValue = totalColumnMoment;
         } else {
-          // For subsequent spans (span 2 onwards):
-          // Get the column moment at the left side of this span
+          // For subsequent spans (span 2 onwards)
+          // Sum of column moments at this joint
           let totalColumnMoment = 0;
           
-          // Sum column moments from current story and all stories above for this column
-          for (let upperStoryIndex = 0; upperStoryIndex <= storyIndex; upperStoryIndex++) {
-            if (upperStoryIndex === storyIndex) {
-              // Current story's column moment for this column
-              totalColumnMoment += storyColumnMoment[spanIndex];
-            } else if (columnMoment[upperStoryIndex] && spanIndex < columnMoment[upperStoryIndex].length) {
-              // Add column moments from stories above for this column
+          // Current story's column moment
+          totalColumnMoment += storyColumnMoment[spanIndex];
+          
+          // Add column moments from stories above for this column
+          for (let upperStoryIndex = 0; upperStoryIndex < storyIndex; upperStoryIndex++) {
+            if (columnMoment[upperStoryIndex] && spanIndex < columnMoment[upperStoryIndex].length) {
               totalColumnMoment += columnMoment[upperStoryIndex][spanIndex];
             }
           }
           
-          // The girder moment for this span is the total column moment minus the previous span's girder moment
+          // Subtract the previous span's girder moment
           girderMomentValue = totalColumnMoment - storyGirderMoment[spanIndex - 1];
           
           // Ensure the value is positive for visualization purposes
           girderMomentValue = Math.abs(girderMomentValue);
         }
         
-        storyGirderMoment.push(girderMomentValue);
+        storyGirderMoment.push(roundToTwoDecimal(girderMomentValue));
         
         // Step 4: Calculate girder shear from girder moments
         const spanLength = spanMeasurements[storyIndex][spanIndex];
         
         // For girder shear calculation, we need the left and right girder moments
-        let leftMoment = girderMomentValue;
+        const leftMoment = girderMomentValue;
         let rightMoment = 0;
         
         // If this is not the last span, calculate the right moment for shear calculation
         if (spanIndex < spansPerStory[storyIndex] - 1) {
-          // Calculate the total column moment for the next joint
+          // For the next joint, do the same process to get the moment
           let nextTotalColumnMoment = 0;
           
-          // Sum column moments for the next column from current story and all stories above
-          for (let upperStoryIndex = 0; upperStoryIndex <= storyIndex; upperStoryIndex++) {
-            if (upperStoryIndex === storyIndex) {
-              // Current story's column moment for the next column
-              nextTotalColumnMoment += storyColumnMoment[spanIndex + 1];
-            } else if (columnMoment[upperStoryIndex] && (spanIndex + 1) < columnMoment[upperStoryIndex].length) {
-              // Add column moments from stories above for the next column
+          // Current story's next column moment
+          nextTotalColumnMoment += storyColumnMoment[spanIndex + 1];
+          
+          // Add column moments from stories above for the next column
+          for (let upperStoryIndex = 0; upperStoryIndex < storyIndex; upperStoryIndex++) {
+            if (columnMoment[upperStoryIndex] && (spanIndex + 1) < columnMoment[upperStoryIndex].length) {
               nextTotalColumnMoment += columnMoment[upperStoryIndex][spanIndex + 1];
             }
           }
           
-          // The right moment is the next total column moment minus the current girder moment
-          rightMoment = Math.abs(nextTotalColumnMoment - girderMomentValue);
+          // Calculate the right moment
+          rightMoment = Math.abs(nextTotalColumnMoment - leftMoment);
         } else {
           // For the last span, the right moment is the column moment of the last column
           let lastColumnMoment = 0;
           
-          // Sum column moments for the last column from current story and all stories above
-          for (let upperStoryIndex = 0; upperStoryIndex <= storyIndex; upperStoryIndex++) {
-            if (upperStoryIndex === storyIndex) {
-              // Current story's column moment for the last column
-              lastColumnMoment += storyColumnMoment[numColumns - 1];
-            } else if (columnMoment[upperStoryIndex] && (numColumns - 1) < columnMoment[upperStoryIndex].length) {
-              // Add column moments from stories above for the last column
+          // Add the current story's last column moment
+          lastColumnMoment += storyColumnMoment[numColumns - 1];
+          
+          // Add column moments from stories above for the last column
+          for (let upperStoryIndex = 0; upperStoryIndex < storyIndex; upperStoryIndex++) {
+            if (columnMoment[upperStoryIndex] && (numColumns - 1) < columnMoment[upperStoryIndex].length) {
               lastColumnMoment += columnMoment[upperStoryIndex][numColumns - 1];
             }
           }
@@ -176,7 +175,7 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         
         // Calculate girder shear as (leftMoment + rightMoment) / span length
         const girderShearValue = (leftMoment + rightMoment) / spanLength;
-        storyGirderShear.push(girderShearValue);
+        storyGirderShear.push(roundToTwoDecimal(girderShearValue));
       }
       
       // Store results for this story
