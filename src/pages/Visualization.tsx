@@ -52,7 +52,7 @@ const Visualization = () => {
           <div className="bg-blue-50 p-3 rounded-lg max-w-xl">
             <p className="text-sm text-framepro-darkgray">
               <span className="font-medium">Visual Guide:</span> Arrows indicate direction and relative magnitude of forces and moments. 
-              Colored markers highlight key structural analysis points with dynamically calculated values.
+              Colored markers highlight key structural analysis points with dynamically calculated values based on the portal method.
             </p>
           </div>
           
@@ -75,13 +75,21 @@ const Visualization = () => {
           results={calculationResults}
         />
         
-        <div className="flex justify-center mt-8">
+        <div className="flex justify-center mt-8 gap-4">
           <button 
             onClick={() => window.print()} 
             className="btn-secondary flex items-center gap-2"
           >
             <Download className="w-5 h-5" />
             Export Results
+          </button>
+          
+          <button 
+            onClick={() => navigate('/calculator')} 
+            className="btn-primary flex items-center gap-2"
+          >
+            <RefreshCw className="w-5 h-5" />
+            Modify Structure
           </button>
         </div>
       </div>

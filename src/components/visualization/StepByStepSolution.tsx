@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -189,6 +188,7 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
               <p className="text-framepro-darkgray">
                 Girder moments are calculated using the principle of joint equilibrium: ∑M = 0 at each joint.
                 We use the convention that column moments are counterclockwise (negative) and girder moments are clockwise (positive).
+                <strong className="block mt-2">Important: We must include column moments from ALL stories above when calculating girder moments.</strong>
               </p>
               
               {Array.from({ length: numStories }).map((_, storyIndex) => {
@@ -207,6 +207,14 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                         const columnMomentAtJoint = results.columnMoment[storyIndex][spanIndex];
                         const previousGirderMoment = spanIndex > 0 ? results.girderMoment[storyIndex][spanIndex - 1] : 0;
                         
+                        // Calculate total column moment including upper floors
+                        let upperFloorsColumnMoment = 0;
+                        for (let i = 0; i < storyIndex; i++) {
+                          if (spanIndex < results.columnMoment[i].length) {
+                            upperFloorsColumnMoment += results.columnMoment[i][spanIndex];
+                          }
+                        }
+                        
                         return (
                           <div key={`span-moment-${storyIndex}-${spanIndex}`} className="bg-white p-2 rounded-md shadow-sm">
                             <p className="text-sm font-medium">Span {spanIndex + 1} ({spanLength} m):</p>
@@ -218,29 +226,43 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                             {spanIndex === 0 ? (
                               <div>
                                 <p className="mb-1">At leftmost joint (Column 1):</p>
+                                <div className="mb-1 space-y-1">
+                                  <p>Current floor column moment = {columnMomentAtJoint.toFixed(2)} kN·m</p>
+                                  {upperFloorsColumnMoment > 0 && (
+                                    <p>Upper floors column moment = {upperFloorsColumnMoment.toFixed(2)} kN·m</p>
+                                  )}
+                                  <p>
+                                    (−{columnMomentAtJoint.toFixed(2)} kN·m {upperFloorsColumnMoment > 0 ? `− ${upperFloorsColumnMoment.toFixed(2)} kN·m` : ''}) + Girder Moment = 0
+                                  </p>
+                                </div>
                                 <p className="mb-1">
-                                  (−{columnMomentAtJoint.toFixed(2)} kN·m) + Girder Moment = 0
-                                </p>
-                                <p className="mb-1">
-                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m
+                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m {upperFloorsColumnMoment > 0 ? `+ ${upperFloorsColumnMoment.toFixed(2)} kN·m` : ''} = {moment.toFixed(2)} kN·m
                                 </p>
                                 <p className="text-xs text-framepro-darkgray mt-2">
-                                  Note: The column moment is counterclockwise (negative), and the girder moment is clockwise (positive).
-                                  The girder moment equals the column moment in magnitude but is opposite in sign.
+                                  Note: The column moments are counterclockwise (negative), and the girder moment is clockwise (positive).
+                                  We sum all column moments from current floor AND upper floors.
                                 </p>
                               </div>
                             ) : (
                               <div>
                                 <p className="mb-1">At joint (Column {spanIndex + 1}):</p>
+                                <div className="mb-1 space-y-1">
+                                  <p>Current floor column moment = {columnMomentAtJoint.toFixed(2)} kN·m</p>
+                                  {upperFloorsColumnMoment > 0 && (
+                                    <p>Upper floors column moment = {upperFloorsColumnMoment.toFixed(2)} kN·m</p>
+                                  )}
+                                  <p>Previous span girder moment = {previousGirderMoment.toFixed(2)} kN·m</p>
+                                  <p>
+                                    (−{columnMomentAtJoint.toFixed(2)} kN·m {upperFloorsColumnMoment > 0 ? `− ${upperFloorsColumnMoment.toFixed(2)} kN·m` : ''}) + {previousGirderMoment.toFixed(2)} kN·m + Girder Moment = 0
+                                  </p>
+                                </div>
                                 <p className="mb-1">
-                                  (−{columnMomentAtJoint.toFixed(2)} kN·m) + {previousGirderMoment.toFixed(2)} kN·m + Girder Moment = 0
-                                </p>
-                                <p className="mb-1">
-                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m − {previousGirderMoment.toFixed(2)} kN·m = {moment.toFixed(2)} kN·m
+                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m {upperFloorsColumnMoment > 0 ? `+ ${upperFloorsColumnMoment.toFixed(2)} kN·m` : ''} − {previousGirderMoment.toFixed(2)} kN·m = {moment.toFixed(2)} kN·m
                                 </p>
                                 <p className="text-xs text-framepro-darkgray mt-2">
-                                  Note: At internal joints, we consider the column moment (counterclockwise/negative), the previous span's girder moment (clockwise/positive), 
-                                  and the current span's girder moment (clockwise/positive). We use absolute values in the visualization.
+                                  Note: At internal joints, we consider column moments from the current floor AND upper floors (all counterclockwise/negative), 
+                                  the previous span's girder moment (clockwise/positive), and the current span's girder moment (clockwise/positive).
+                                  We use absolute values in the visualization.
                                 </p>
                               </div>
                             )}
