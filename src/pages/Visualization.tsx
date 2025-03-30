@@ -52,7 +52,7 @@ const Visualization = () => {
           <div className="bg-blue-50 p-3 rounded-lg max-w-xl">
             <p className="text-sm text-framepro-darkgray">
               <span className="font-medium">Visual Guide:</span> Arrows indicate direction and relative magnitude of forces and moments. 
-              Colored markers highlight key structural analysis points with specific values.
+              Colored markers highlight key structural analysis points with dynamically calculated values.
             </p>
           </div>
           

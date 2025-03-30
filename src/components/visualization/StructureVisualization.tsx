@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
@@ -65,25 +64,6 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
   // Helper function to format numbers to 2 decimal places
   const formatNumber = (num: number): string => {
     return num.toFixed(2);
-  };
-  
-  // Custom value override for specific marked points
-  const getCustomValue = (storyIndex: number, spanIndex: number, valueType: 'girderMoment' | 'girderShear'): number | null => {
-    // Ground floor (storyIndex = 2 for a 3-story building)
-    if (storyIndex === structureData.numStories - 1) {
-      // Red mark: First span (spanIndex = 0)
-      if (spanIndex === 0 && valueType === 'girderMoment') return 30;
-      if (spanIndex === 0 && valueType === 'girderShear') return 20;
-      
-      // Blue mark: Second span (spanIndex = 1)
-      if (spanIndex === 1 && valueType === 'girderMoment') return 30;
-      if (spanIndex === 1 && valueType === 'girderShear') return 15;
-      
-      // Yellow mark: Second span (spanIndex = 1) girder shear in specific scenario
-      if (spanIndex === 1 && valueType === 'girderShear' && structureData.numStories === 3) return 7.5;
-    }
-    
-    return null;
   };
   
   useEffect(() => {
@@ -257,50 +237,38 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
         
         // Only draw if we have data for this story and span
         if (results.girderShear[storyIndex] && results.girderShear[storyIndex][spanIndex] !== undefined) {
-          // Check for custom overrides
-          const customShear = getCustomValue(storyIndex, spanIndex, 'girderShear');
-          const customMoment = getCustomValue(storyIndex, spanIndex, 'girderMoment');
-          
-          // Girder shear - use custom value if available
-          const shear = customShear !== null 
-            ? formatNumber(customShear) 
-            : formatNumber(results.girderShear[storyIndex][spanIndex]);
-            
+          // Girder shear
+          const shear = formatNumber(results.girderShear[storyIndex][spanIndex]);
           ctx.fillStyle = '#34C759';
           ctx.fillText(`GS: ${shear} kN`, spanMidX, currentY + 20);
           
-          // Girder moment - use custom value if available
-          const moment = customMoment !== null 
-            ? formatNumber(customMoment) 
-            : formatNumber(results.girderMoment[storyIndex][spanIndex]);
-            
+          // Girder moment
+          const moment = formatNumber(results.girderMoment[storyIndex][spanIndex]);
           ctx.fillStyle = '#FF9500';
           ctx.fillText(`GM: ${moment} kN·m`, spanMidX, currentY + 40);
           
-          // Add visual markers for special points
-          if (customShear !== null || customMoment !== null) {
-            // Red mark for the first span on ground floor
-            if (storyIndex === structureData.numStories - 1 && spanIndex === 0) {
+          // Add visual markers for special points on ground floor
+          if (storyIndex === structureData.numStories - 1) {
+            if (spanIndex === 0) {
+              // Red mark for first span on ground floor
               ctx.fillStyle = '#FF0000';
               ctx.beginPath();
               ctx.arc(spanMidX, currentY + 30, 10, 0, Math.PI * 2);
               ctx.fill();
-            }
-            
-            // Blue mark for the second span on ground floor
-            if (storyIndex === structureData.numStories - 1 && spanIndex === 1) {
+            } else if (spanIndex === 1) {
+              // Blue mark for second span on ground floor
               ctx.fillStyle = '#0000FF';
               ctx.beginPath();
               ctx.arc(spanMidX, currentY + 30, 10, 0, Math.PI * 2);
               ctx.fill();
-            }
-            
-            // Yellow mark for special girder shear on second span
-            if (storyIndex === structureData.numStories - 1 && spanIndex === 1 && customShear === 7.5) {
-              ctx.fillStyle = '#FFFF00';
-              ctx.beginPath();
-              ctx.arc(spanMidX, currentY + 30, 10, 0, Math.PI * 2);
-              ctx.fill();
+              
+              // Add yellow mark if it's a 3-story building (special case)
+              if (structureData.numStories === 3) {
+                ctx.fillStyle = '#FFFF00';
+                ctx.beginPath();
+                ctx.arc(spanMidX + 15, currentY + 30, 10, 0, Math.PI * 2);
+                ctx.fill();
+              }
             }
           }
         }
@@ -558,11 +526,11 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
               <li>Vertical arrows (↓) represent girder shear forces</li>
               <li>Curved arrows (↺/↻) represent moments</li>
               <li>Larger arrow at right represents the lateral load</li>
-              <li>Colored markers indicate special structural analysis points:</li>
+              <li>Colored markers indicate special structural analysis points on the ground floor:</li>
               <ul className="pl-5 space-y-1">
-                <li><span className="text-red-500 font-medium">Red</span>: GM: 30 kN·m, GS: 20 kN</li>
-                <li><span className="text-blue-500 font-medium">Blue</span>: GM: 30 kN·m, GS: 15 kN</li>
-                <li><span className="text-yellow-500 font-medium">Yellow</span>: GS: 7.5 kN</li>
+                <li><span className="text-red-500 font-medium">Red</span>: First span</li>
+                <li><span className="text-blue-500 font-medium">Blue</span>: Second span</li>
+                <li><span className="text-yellow-500 font-medium">Yellow</span>: Special case (3-story building)</li>
               </ul>
             </ul>
           </div>

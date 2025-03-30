@@ -75,7 +75,7 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const exteriorColumnShear = cumulativeLoad / effectiveColumns;
       
       // Calculate column shear forces
-      for (let columnIndex = 0; columnIndex < numColumns; columnIndex++) {
+      for (let columnIndex = 0; columnIndex <= numSpans; columnIndex++) {
         // Exterior columns (first and last) have shear = V
         // Interior columns have shear = 2V
         const isExterior = columnIndex === 0 || columnIndex === numColumns - 1;
@@ -183,26 +183,6 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
           }
           
           rightMoment = lastColumnMoment;
-        }
-        
-        // Set specific custom values for ground floor spans as per requirements
-        if (storyIndex === numStories - 1) {
-          if (spanIndex === 0) {
-            // Red Mark: First span on ground floor
-            storyGirderMoment[spanIndex] = 30;
-            storyGirderShear.push(20);
-            continue;
-          } else if (spanIndex === 1) {
-            // Blue Mark: Second span on ground floor
-            storyGirderMoment[spanIndex] = 30;
-            if (numStories === 3) {
-              // Yellow Mark: Special case for 3-story building
-              storyGirderShear.push(7.5);
-            } else {
-              storyGirderShear.push(15);
-            }
-            continue;
-          }
         }
         
         // Calculate girder shear as (leftMoment + rightMoment) / span length
