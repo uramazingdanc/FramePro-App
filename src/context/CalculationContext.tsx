@@ -75,7 +75,7 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const exteriorColumnShear = cumulativeLoad / effectiveColumns;
       
       // Calculate column shear forces
-      for (let columnIndex = 0; columnIndex <= numSpans; columnIndex++) {
+      for (let columnIndex = 0; columnIndex <= spansPerStory[storyIndex]; columnIndex++) {
         // Exterior columns (first and last) have shear = V
         // Interior columns have shear = 2V
         const isExterior = columnIndex === 0 || columnIndex === numColumns - 1;
