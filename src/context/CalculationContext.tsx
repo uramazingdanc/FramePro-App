@@ -140,8 +140,8 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         // Step 4: Calculate girder shear from girder moments
         const spanLength = spanMeasurements[storyIndex][spanIndex];
         
-        // For girder shear calculation, we need the left and right girder moments
-        const leftMoment = storyGirderMoment[spanIndex];
+        // For girder shear calculation, we need the left and right moment values
+        let leftMoment = storyGirderMoment[spanIndex];
         let rightMoment = 0;
         
         // If this is not the last span, calculate the right moment for shear calculation
@@ -160,11 +160,8 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
             }
           }
           
-          // Calculate the right moment using the formula for the next girder moment
-          // But we need to calculate it directly rather than using the next girder moment
-          // which hasn't been calculated yet
-          const nextLeftGirderMoment = leftMoment; // Current girder moment becomes next left
-          rightMoment = nextTotalColumnMoment - nextLeftGirderMoment;
+          // Account for the current girder moment in the equilibrium
+          rightMoment = nextTotalColumnMoment - leftMoment;
           rightMoment = Math.abs(rightMoment); // Take absolute value
         } else {
           // For the last span, the right moment is the sum of column moments at the last column
@@ -184,7 +181,7 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
           rightMoment = lastColumnMoment;
         }
         
-        // Calculate girder shear as (leftMoment + rightMoment) / span length
+        // Use both moments for shear calculation (left + right) / span length
         const girderShearValue = (leftMoment + rightMoment) / spanLength;
         storyGirderShear.push(roundToTwoDecimal(girderShearValue));
       }

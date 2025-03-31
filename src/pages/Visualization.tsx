@@ -6,7 +6,7 @@ import Layout from '@/components/Layout';
 import StructureVisualization from '@/components/visualization/StructureVisualization';
 import StepByStepSolution from '@/components/visualization/StepByStepSolution';
 import { useCalculation } from '@/context/CalculationContext';
-import { AlertCircle, Download, RefreshCw } from 'lucide-react';
+import { AlertCircle, Download, Info, RefreshCw } from 'lucide-react';
 
 const Visualization = () => {
   const navigate = useNavigate();
@@ -50,10 +50,13 @@ const Visualization = () => {
           className="flex flex-col sm:flex-row sm:justify-between items-center gap-4 mb-6"
         >
           <div className="bg-blue-50 p-3 rounded-lg max-w-xl">
-            <p className="text-sm text-framepro-darkgray">
-              <span className="font-medium">Visual Guide:</span> Arrows indicate direction and relative magnitude of forces and moments. 
-              Colored markers highlight key structural analysis points with dynamically calculated values based on the portal method.
-            </p>
+            <div className="flex items-start gap-2">
+              <Info className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-framepro-darkgray">
+                <span className="font-medium">Portal Method Analysis:</span> All calculations follow the portal method where moments from upper floors are included when calculating girder forces. 
+                For irregular structures, the upper floors align with the left side of the ground floor to maintain column alignment.
+              </p>
+            </div>
           </div>
           
           <button 

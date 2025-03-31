@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -285,7 +286,7 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
           <AccordionContent className="px-4 py-3 bg-white">
             <motion.div variants={item} className="space-y-4">
               <p className="text-framepro-darkgray">
-                Girder shears are calculated using the formula: V<sub>girder</sub> = ∑M<sub>girder</sub> / L<sub>span</sub>
+                Girder shears are calculated using the formula: V<sub>girder</sub> = (M<sub>left</sub> + M<sub>right</sub>) / L<sub>span</sub>
               </p>
               
               {Array.from({ length: numStories }).map((_, storyIndex) => {
@@ -302,12 +303,37 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                         const spanLength = spanMeasurements[storyIndex][spanIndex];
                         const shear = results.girderShear[storyIndex][spanIndex];
                         const leftMoment = results.girderMoment[storyIndex][spanIndex];
+                        
+                        // Calculate right moment for shear calculation
                         let rightMoment = 0;
                         
-                        if (spanIndex < spans - 1) {
-                          rightMoment = leftMoment; // Using the same value for consistency
-                        } else {
-                          rightMoment = results.columnMoment[storyIndex][spanIndex + 1]; // Last column moment
+                        // For last span
+                        if (spanIndex === spans - 1) {
+                          // Add current story's last column moment
+                          rightMoment = results.columnMoment[storyIndex][spanIndex + 1];
+                          
+                          // Add column moments from stories above for the right column
+                          for (let i = 0; i < storyIndex; i++) {
+                            if (spanIndex + 1 < results.columnMoment[i].length) {
+                              rightMoment += results.columnMoment[i][spanIndex + 1];
+                            }
+                          }
+                        } 
+                        // For all other spans, right moment is the next span's left moment
+                        else {
+                          // Need to calculate the next joint's column moments
+                          let nextJointColumnMoment = results.columnMoment[storyIndex][spanIndex + 1];
+                          
+                          // Add column moments from stories above for this joint
+                          for (let i = 0; i < storyIndex; i++) {
+                            if (spanIndex + 1 < results.columnMoment[i].length) {
+                              nextJointColumnMoment += results.columnMoment[i][spanIndex + 1];
+                            }
+                          }
+                          
+                          // Calculate right moment using equilibrium at the next joint
+                          rightMoment = nextJointColumnMoment - leftMoment;
+                          rightMoment = Math.abs(rightMoment);
                         }
                         
                         return (
@@ -315,12 +341,18 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                             <p className="text-sm font-medium">Span {spanIndex + 1} ({spanLength} m):</p>
                             <p className="mb-1">
                               <span className="text-sm bg-framepro-green/10 p-1 rounded">
-                                V<sub>girder</sub> = ∑M<sub>girder</sub> / L<sub>span</sub>
+                                V<sub>girder</sub> = (M<sub>left</sub> + M<sub>right</sub>) / L<sub>span</sub>
                               </span>
                             </p>
                             <p>
                               V<sub>girder</sub> = ({leftMoment.toFixed(2)} kN·m + {rightMoment.toFixed(2)} kN·m) / {spanLength} m = {shear.toFixed(2)} kN
                             </p>
+                            {storyIndex === numStories - 1 && (
+                              <p className="text-xs text-framepro-darkgray mt-2">
+                                <strong>Note:</strong> For ground floor, both left and right moments include the column moments from upper floors,
+                                ensuring that all forces through the structure are properly accounted for in the girder shear calculation.
+                              </p>
+                            )}
                           </div>
                         );
                       })}
@@ -363,20 +395,24 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                   Solving for the Current Girder Moment: Current Girder Moment = Column Moment - Previous Girder Moment
                 </p>
                 <p className="mt-2 text-sm font-medium">
-                  Important: Each span's girder moment must be calculated individually. A girder moment in one span does not automatically apply to other spans.
+                  Important: Column moments from ALL floors above must be included in the calculations, as they contribute to the force distribution throughout the structure.
                 </p>
               </div>
               
               <div className="bg-framepro-lightgray p-3 rounded-md">
-                <h4 className="font-medium mb-2">Variable Spans</h4>
+                <h4 className="font-medium mb-2">Irregular Structures</h4>
                 <p>
-                  If the number of spans changes between floors (e.g., first floor has 3 spans, second floor has 2 spans), 
-                  the values and frame configuration will adjust accordingly in the calculations.
+                  For irregular structures, the second floor aligns with the left side of the ground floor, maintaining vertical column alignment.
+                  This is critical for proper load transmission through the structure.
                 </p>
                 <p className="mt-2">
-                  The column positions remain consistent through all floors. For floors with fewer spans, 
-                  the columns maintain alignment with the corresponding columns from other floors.
+                  Despite irregular configurations, the same portal method principles apply:
                 </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Exterior columns take half the shear of interior columns</li>
+                  <li>All upper floor column moments must be included in calculations</li>
+                  <li>Girder moments and shears follow joint equilibrium principles</li>
+                </ul>
               </div>
               
               <div className="bg-framepro-lightgray p-3 rounded-md">

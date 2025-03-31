@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
@@ -76,10 +77,14 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     // Set canvas dimensions with padding
     const padding = 100;
     
-    // For irregular structures, calculate width based on fixed column spacing
-    const totalWidth = isIrregular 
-      ? columnSpacing * (maxColumns - 1) 
-      : Math.max(...structureData.spanMeasurements.map(spans => spans.reduce((sum, span) => sum + span, 0))) * scale;
+    // Calculate the maximum width needed for any story
+    const totalWidthRegular = Math.max(...structureData.spanMeasurements.map(spans => 
+      spans.reduce((sum, span) => sum + span, 0)
+    )) * scale;
+    
+    const totalWidthIrregular = Math.max(...structureData.spansPerStory) * columnSpacing;
+    
+    const totalWidth = isIrregular ? totalWidthIrregular : totalWidthRegular;
     
     canvas.width = totalWidth + padding * 2;
     canvas.height = totalHeight * scale + padding * 2;
@@ -107,6 +112,9 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
   const drawStructure = (ctx: CanvasRenderingContext2D, padding: number) => {
     let currentY = padding;
     
+    // Calculate left alignment position - for irregular structures, all stories should start from same left position
+    const fixedStartX = padding;
+    
     // Draw stories from top to bottom
     for (let storyIndex = 0; storyIndex < structureData.numStories; storyIndex++) {
       const storyHeight = structureData.storyHeights[storyIndex] * scale;
@@ -115,11 +123,14 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       
       // Calculate total width for this story
       const totalWidth = isIrregular 
-        ? columnSpacing * numSpans 
+        ? columnSpacing * numSpans  
         : spans.reduce((sum, span) => sum + span * scale, 0);
       
-      // Center the structure horizontally
-      const startX = (ctx.canvas.width - totalWidth) / 2;
+      // For regular: center the structure horizontally
+      // For irregular: align to the left (all stories start from same left position)
+      const startX = isIrregular 
+        ? fixedStartX 
+        : (ctx.canvas.width - totalWidth) / 2;
       
       // Draw horizontal beam at the top of the story
       ctx.beginPath();
@@ -130,7 +141,9 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       // Draw columns and label them
       for (let spanIndex = 0; spanIndex <= numSpans; spanIndex++) {
         // Calculate column position
-        const columnX = startX + (isIrregular ? spanIndex * columnSpacing : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
+        const columnX = startX + (isIrregular 
+          ? spanIndex * columnSpacing 
+          : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
         
         // Draw column
         ctx.beginPath();
@@ -147,8 +160,14 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       // Draw span labels
       for (let spanIndex = 0; spanIndex < numSpans; spanIndex++) {
         // Calculate span start and end points
-        const spanStartX = startX + (isIrregular ? spanIndex * columnSpacing : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
-        const spanEndX = startX + (isIrregular ? (spanIndex + 1) * columnSpacing : spans.slice(0, spanIndex + 1).reduce((sum, span) => sum + span * scale, 0));
+        const spanStartX = startX + (isIrregular 
+          ? spanIndex * columnSpacing 
+          : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
+        
+        const spanEndX = startX + (isIrregular 
+          ? (spanIndex + 1) * columnSpacing 
+          : spans.slice(0, spanIndex + 1).reduce((sum, span) => sum + span * scale, 0));
+        
         const spanMidX = (spanStartX + spanEndX) / 2;
         
         // Draw span label
@@ -169,11 +188,15 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
     }
     
     // Draw horizontal beam at the bottom (ground level)
+    const bottomStoryIndex = structureData.numStories - 1;
     const totalWidthBottom = isIrregular 
-      ? columnSpacing * structureData.spansPerStory[structureData.numStories - 1] 
-      : structureData.spanMeasurements[structureData.numStories - 1].reduce((sum, span) => sum + span * scale, 0);
+      ? columnSpacing * structureData.spansPerStory[bottomStoryIndex] 
+      : structureData.spanMeasurements[bottomStoryIndex].reduce((sum, span) => sum + span * scale, 0);
     
-    const bottomBeamX = (ctx.canvas.width - totalWidthBottom) / 2;
+    const bottomBeamX = isIrregular 
+      ? fixedStartX 
+      : (ctx.canvas.width - totalWidthBottom) / 2;
+    
     ctx.beginPath();
     ctx.moveTo(bottomBeamX, currentY);
     ctx.lineTo(bottomBeamX + totalWidthBottom, currentY);
@@ -195,6 +218,9 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
   const drawLabels = (ctx: CanvasRenderingContext2D, padding: number) => {
     let currentY = padding;
     
+    // Fixed left alignment for irregular structures
+    const fixedStartX = padding;
+    
     // Draw force and moment labels for each story
     for (let storyIndex = 0; storyIndex < structureData.numStories; storyIndex++) {
       const storyHeight = structureData.storyHeights[storyIndex] * scale;
@@ -206,13 +232,18 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
         ? columnSpacing * numSpans 
         : spans.reduce((sum, span) => sum + span * scale, 0);
       
-      // Center the structure horizontally
-      const startX = (ctx.canvas.width - totalWidth) / 2;
+      // For regular: center the structure horizontally
+      // For irregular: align to the left (all stories start from same left position)
+      const startX = isIrregular 
+        ? fixedStartX 
+        : (ctx.canvas.width - totalWidth) / 2;
       
       // Draw column forces and moments
       for (let columnIndex = 0; columnIndex <= numSpans; columnIndex++) {
         // Calculate column position
-        const columnX = startX + (isIrregular ? columnIndex * columnSpacing : spans.slice(0, columnIndex).reduce((sum, span) => sum + span * scale, 0));
+        const columnX = startX + (isIrregular 
+          ? columnIndex * columnSpacing 
+          : spans.slice(0, columnIndex).reduce((sum, span) => sum + span * scale, 0));
         
         // Only draw if we have data for this story and column
         if (results.columnShear[storyIndex] && results.columnShear[storyIndex][columnIndex] !== undefined) {
@@ -231,8 +262,14 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       // Draw girder forces and moments
       for (let spanIndex = 0; spanIndex < numSpans; spanIndex++) {
         // Calculate span start and end points
-        const spanStartX = startX + (isIrregular ? spanIndex * columnSpacing : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
-        const spanEndX = startX + (isIrregular ? (spanIndex + 1) * columnSpacing : spans.slice(0, spanIndex + 1).reduce((sum, span) => sum + span * scale, 0));
+        const spanStartX = startX + (isIrregular 
+          ? spanIndex * columnSpacing 
+          : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
+        
+        const spanEndX = startX + (isIrregular 
+          ? (spanIndex + 1) * columnSpacing 
+          : spans.slice(0, spanIndex + 1).reduce((sum, span) => sum + span * scale, 0));
+        
         const spanMidX = (spanStartX + spanEndX) / 2;
         
         // Only draw if we have data for this story and span
@@ -282,6 +319,9 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
   const drawArrows = (ctx: CanvasRenderingContext2D, padding: number) => {
     let currentY = padding;
     
+    // Fixed left alignment for irregular structures
+    const fixedStartX = padding;
+    
     // Draw arrows for each story
     for (let storyIndex = 0; storyIndex < structureData.numStories; storyIndex++) {
       const storyHeight = structureData.storyHeights[storyIndex] * scale;
@@ -293,8 +333,11 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
         ? columnSpacing * numSpans 
         : spans.reduce((sum, span) => sum + span * scale, 0);
       
-      // Center the structure horizontally
-      const startX = (ctx.canvas.width - totalWidth) / 2;
+      // For regular: center the structure horizontally
+      // For irregular: align to the left (all stories start from same left position)
+      const startX = isIrregular 
+        ? fixedStartX 
+        : (ctx.canvas.width - totalWidth) / 2;
       
       // Draw lateral load arrow at the right side of the structure
       const lateralLoadArrowX = startX + totalWidth + 30;
@@ -322,7 +365,9 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       // Draw column shear arrows
       for (let columnIndex = 0; columnIndex <= numSpans; columnIndex++) {
         // Calculate column position
-        const columnX = startX + (isIrregular ? columnIndex * columnSpacing : spans.slice(0, columnIndex).reduce((sum, span) => sum + span * scale, 0));
+        const columnX = startX + (isIrregular 
+          ? columnIndex * columnSpacing 
+          : spans.slice(0, columnIndex).reduce((sum, span) => sum + span * scale, 0));
         
         if (results.columnShear[storyIndex] && results.columnShear[storyIndex][columnIndex] !== undefined) {
           // Draw column shear arrow
@@ -350,9 +395,15 @@ const StructureVisualization: React.FC<VisualizationProps> = ({ structureData, r
       
       // Draw girder shear and moment arrows
       for (let spanIndex = 0; spanIndex < numSpans; spanIndex++) {
-        // Calculate span middle position
-        const spanStartX = startX + (isIrregular ? spanIndex * columnSpacing : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
-        const spanEndX = startX + (isIrregular ? (spanIndex + 1) * columnSpacing : spans.slice(0, spanIndex + 1).reduce((sum, span) => sum + span * scale, 0));
+        // Calculate span start and end points
+        const spanStartX = startX + (isIrregular 
+          ? spanIndex * columnSpacing 
+          : spans.slice(0, spanIndex).reduce((sum, span) => sum + span * scale, 0));
+        
+        const spanEndX = startX + (isIrregular 
+          ? (spanIndex + 1) * columnSpacing 
+          : spans.slice(0, spanIndex + 1).reduce((sum, span) => sum + span * scale, 0));
+        
         const spanMidX = (spanStartX + spanEndX) / 2;
         
         if (results.girderShear[storyIndex] && results.girderShear[storyIndex][spanIndex] !== undefined) {
