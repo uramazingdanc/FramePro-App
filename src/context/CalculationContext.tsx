@@ -134,44 +134,13 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         // Step 4: Calculate girder shear from girder moments
         const spanLength = spanMeasurements[storyIndex][spanIndex];
         
-        // For girder shear calculation: add left moment and right moment, then divide by span length
-        const leftMoment = storyGirderMoment[spanIndex]; // Left moment is the current girder moment
+        // UPDATED: For girder shear calculation use doubled moments (same value for left and right)
+        // This is for uniform distribution of moments in one direction
+        const girderMoment = storyGirderMoment[spanIndex];
         
-        let rightMoment = 0;
-        
-        // Right moment calculation based on joint equilibrium
-        if (spanIndex < spansPerStory[storyIndex] - 1) {
-          // Calculate joint moment for the next column (similar to girder moment calculation above)
-          let nextTotalColumnMoment = 0;
-          
-          // Add current story's next column moment
-          nextTotalColumnMoment += storyColumnMoment[spanIndex + 1];
-          
-          // Add column moments from the story directly above for the next joint (if it exists)
-          if (storyIndex > 0 && (spanIndex + 1) < columnMoment[storyIndex - 1].length) {
-            nextTotalColumnMoment += columnMoment[storyIndex - 1][spanIndex + 1];
-          }
-          
-          // Calculate right moment (this will be the next girder moment)
-          rightMoment = nextTotalColumnMoment - leftMoment;
-          rightMoment = Math.abs(rightMoment); // Take absolute value
-        } else {
-          // For the last span, the right moment is the sum of column moments at the last column
-          let lastColumnMoment = 0;
-          
-          // Add current story's last column moment
-          lastColumnMoment += storyColumnMoment[numColumns - 1];
-          
-          // Add column moments from the story directly above for the last joint (if it exists)
-          if (storyIndex > 0 && (numColumns - 1) < columnMoment[storyIndex - 1].length) {
-            lastColumnMoment += columnMoment[storyIndex - 1][numColumns - 1];
-          }
-          
-          rightMoment = lastColumnMoment;
-        }
-        
-        // Calculate girder shear using the formula: (Mleft + Mright) / Lspan
-        const girderShearValue = (leftMoment + rightMoment) / spanLength;
+        // Calculate girder shear using the formula: (Mgirder + Mgirder) / Lspan
+        // Which is equivalent to 2 * Mgirder / Lspan
+        const girderShearValue = (2 * girderMoment) / spanLength;
         storyGirderShear.push(roundToTwoDecimal(girderShearValue));
       }
       
