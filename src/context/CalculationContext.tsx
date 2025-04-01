@@ -134,13 +134,14 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         // Step 4: Calculate girder shear from girder moments
         const spanLength = spanMeasurements[storyIndex][spanIndex];
         
-        // For girder shear calculation, we need the left and right moment values
-        let leftMoment = storyGirderMoment[spanIndex];
+        // For girder shear calculation: add left moment and right moment, then divide by span length
+        const leftMoment = storyGirderMoment[spanIndex]; // Left moment is the current girder moment
+        
         let rightMoment = 0;
         
-        // If this is not the last span, calculate the right moment for shear calculation
+        // Right moment calculation based on joint equilibrium
         if (spanIndex < spansPerStory[storyIndex] - 1) {
-          // For the next joint, gather column moments (current story and the story directly above)
+          // Calculate joint moment for the next column (similar to girder moment calculation above)
           let nextTotalColumnMoment = 0;
           
           // Add current story's next column moment
@@ -151,7 +152,7 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
             nextTotalColumnMoment += columnMoment[storyIndex - 1][spanIndex + 1];
           }
           
-          // Account for the current girder moment in the equilibrium
+          // Calculate right moment (this will be the next girder moment)
           rightMoment = nextTotalColumnMoment - leftMoment;
           rightMoment = Math.abs(rightMoment); // Take absolute value
         } else {
@@ -169,7 +170,7 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
           rightMoment = lastColumnMoment;
         }
         
-        // Use both moments for shear calculation (left + right) / span length
+        // Calculate girder shear using the formula: (Mleft + Mright) / Lspan
         const girderShearValue = (leftMoment + rightMoment) / spanLength;
         storyGirderShear.push(roundToTwoDecimal(girderShearValue));
       }
