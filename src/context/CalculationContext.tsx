@@ -92,39 +92,33 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       for (let spanIndex = 0; spanIndex < spansPerStory[storyIndex]; spanIndex++) {
         // For first span (left-most span)
         if (spanIndex === 0) {
-          // Sum ALL column moments at this joint (current story AND all stories above)
+          // Sum column moments at this joint (current story AND the story directly above, if it exists)
           let totalColumnMoment = 0;
           
           // Add column moments from current story
           totalColumnMoment += storyColumnMoment[spanIndex];
           
-          // Add column moments from stories above for this joint
-          for (let i = 0; i < storyIndex; i++) {
-            // Only add if the column exists in the upper story
-            if (spanIndex < columnMoment[i].length) {
-              totalColumnMoment += columnMoment[i][spanIndex];
-            }
+          // Add column moments from the story directly above for this joint (if it exists)
+          if (storyIndex > 0 && spanIndex < columnMoment[storyIndex - 1].length) {
+            totalColumnMoment += columnMoment[storyIndex - 1][spanIndex];
           }
           
           // The girder moment for the first span is the sum of all column moments at this joint
           storyGirderMoment.push(roundToTwoDecimal(totalColumnMoment));
         } else {
           // For subsequent spans, we need:
-          // 1. Sum of all column moments at this joint (current and above stories)
+          // 1. Sum of column moments at this joint (current and the story directly above)
           // 2. Subtract the previous girder moment
           
-          // Calculate total column moment at this joint from current and all upper stories
+          // Calculate total column moment at this joint from current and the story directly above
           let totalColumnMoment = 0;
           
           // Add current story column moment
           totalColumnMoment += storyColumnMoment[spanIndex];
           
-          // Add column moments from stories above for this joint
-          for (let i = 0; i < storyIndex; i++) {
-            // Only add if the column exists in the upper story
-            if (spanIndex < columnMoment[i].length) {
-              totalColumnMoment += columnMoment[i][spanIndex];
-            }
+          // Add column moments from the story directly above for this joint (if it exists)
+          if (storyIndex > 0 && spanIndex < columnMoment[storyIndex - 1].length) {
+            totalColumnMoment += columnMoment[storyIndex - 1][spanIndex];
           }
           
           // Subtract the previous span's girder moment
@@ -146,18 +140,15 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         
         // If this is not the last span, calculate the right moment for shear calculation
         if (spanIndex < spansPerStory[storyIndex] - 1) {
-          // For the next joint, gather all column moments (current story and all above)
+          // For the next joint, gather column moments (current story and the story directly above)
           let nextTotalColumnMoment = 0;
           
           // Add current story's next column moment
           nextTotalColumnMoment += storyColumnMoment[spanIndex + 1];
           
-          // Add column moments from stories above for the next joint
-          for (let i = 0; i < storyIndex; i++) {
-            // Only add if the column exists in the upper story
-            if ((spanIndex + 1) < columnMoment[i].length) {
-              nextTotalColumnMoment += columnMoment[i][spanIndex + 1];
-            }
+          // Add column moments from the story directly above for the next joint (if it exists)
+          if (storyIndex > 0 && (spanIndex + 1) < columnMoment[storyIndex - 1].length) {
+            nextTotalColumnMoment += columnMoment[storyIndex - 1][spanIndex + 1];
           }
           
           // Account for the current girder moment in the equilibrium
@@ -170,12 +161,9 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
           // Add current story's last column moment
           lastColumnMoment += storyColumnMoment[numColumns - 1];
           
-          // Add column moments from stories above for the last joint
-          for (let i = 0; i < storyIndex; i++) {
-            // Only add if the column exists in the upper story
-            if ((numColumns - 1) < columnMoment[i].length) {
-              lastColumnMoment += columnMoment[i][numColumns - 1];
-            }
+          // Add column moments from the story directly above for the last joint (if it exists)
+          if (storyIndex > 0 && (numColumns - 1) < columnMoment[storyIndex - 1].length) {
+            lastColumnMoment += columnMoment[storyIndex - 1][numColumns - 1];
           }
           
           rightMoment = lastColumnMoment;

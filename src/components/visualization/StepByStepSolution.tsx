@@ -189,7 +189,7 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
               <p className="text-framepro-darkgray">
                 Girder moments are calculated using the principle of joint equilibrium: ∑M = 0 at each joint.
                 We use the convention that column moments are counterclockwise (negative) and girder moments are clockwise (positive).
-                <strong className="block mt-2">Important: We must include column moments from ALL stories above when calculating girder moments.</strong>
+                <strong className="block mt-2">Important: We only include column moments from the current story and the story directly above when calculating girder moments.</strong>
               </p>
               
               {Array.from({ length: numStories }).map((_, storyIndex) => {
@@ -208,12 +208,10 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                         const columnMomentAtJoint = results.columnMoment[storyIndex][spanIndex];
                         const previousGirderMoment = spanIndex > 0 ? results.girderMoment[storyIndex][spanIndex - 1] : 0;
                         
-                        // Calculate total column moment including upper floors
-                        let upperFloorsColumnMoment = 0;
-                        for (let i = 0; i < storyIndex; i++) {
-                          if (spanIndex < results.columnMoment[i].length) {
-                            upperFloorsColumnMoment += results.columnMoment[i][spanIndex];
-                          }
+                        // Calculate column moment from story directly above (if it exists)
+                        let upperFloorColumnMoment = 0;
+                        if (storyIndex > 0 && spanIndex < results.columnMoment[storyIndex - 1].length) {
+                          upperFloorColumnMoment = results.columnMoment[storyIndex - 1][spanIndex];
                         }
                         
                         return (
@@ -229,19 +227,19 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                                 <p className="mb-1">At leftmost joint (Column 1):</p>
                                 <div className="mb-1 space-y-1">
                                   <p>Current floor column moment = {columnMomentAtJoint.toFixed(2)} kN·m</p>
-                                  {upperFloorsColumnMoment > 0 && (
-                                    <p>Upper floors column moment = {upperFloorsColumnMoment.toFixed(2)} kN·m</p>
+                                  {upperFloorColumnMoment > 0 && (
+                                    <p>Column moment from story directly above = {upperFloorColumnMoment.toFixed(2)} kN·m</p>
                                   )}
                                   <p>
-                                    (−{columnMomentAtJoint.toFixed(2)} kN·m {upperFloorsColumnMoment > 0 ? `− ${upperFloorsColumnMoment.toFixed(2)} kN·m` : ''}) + Girder Moment = 0
+                                    (−{columnMomentAtJoint.toFixed(2)} kN·m {upperFloorColumnMoment > 0 ? `− ${upperFloorColumnMoment.toFixed(2)} kN·m` : ''}) + Girder Moment = 0
                                   </p>
                                 </div>
                                 <p className="mb-1">
-                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m {upperFloorsColumnMoment > 0 ? `+ ${upperFloorsColumnMoment.toFixed(2)} kN·m` : ''} = {moment.toFixed(2)} kN·m
+                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m {upperFloorColumnMoment > 0 ? `+ ${upperFloorColumnMoment.toFixed(2)} kN·m` : ''} = {moment.toFixed(2)} kN·m
                                 </p>
                                 <p className="text-xs text-framepro-darkgray mt-2">
                                   Note: The column moments are counterclockwise (negative), and the girder moment is clockwise (positive).
-                                  We sum all column moments from current floor AND upper floors.
+                                  We only sum column moments from current floor AND the floor directly above (if it exists).
                                 </p>
                               </div>
                             ) : (
@@ -249,19 +247,19 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                                 <p className="mb-1">At joint (Column {spanIndex + 1}):</p>
                                 <div className="mb-1 space-y-1">
                                   <p>Current floor column moment = {columnMomentAtJoint.toFixed(2)} kN·m</p>
-                                  {upperFloorsColumnMoment > 0 && (
-                                    <p>Upper floors column moment = {upperFloorsColumnMoment.toFixed(2)} kN·m</p>
+                                  {upperFloorColumnMoment > 0 && (
+                                    <p>Column moment from story directly above = {upperFloorColumnMoment.toFixed(2)} kN·m</p>
                                   )}
                                   <p>Previous span girder moment = {previousGirderMoment.toFixed(2)} kN·m</p>
                                   <p>
-                                    (−{columnMomentAtJoint.toFixed(2)} kN·m {upperFloorsColumnMoment > 0 ? `− ${upperFloorsColumnMoment.toFixed(2)} kN·m` : ''}) + {previousGirderMoment.toFixed(2)} kN·m + Girder Moment = 0
+                                    (−{columnMomentAtJoint.toFixed(2)} kN·m {upperFloorColumnMoment > 0 ? `− ${upperFloorColumnMoment.toFixed(2)} kN·m` : ''}) + {previousGirderMoment.toFixed(2)} kN·m + Girder Moment = 0
                                   </p>
                                 </div>
                                 <p className="mb-1">
-                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m {upperFloorsColumnMoment > 0 ? `+ ${upperFloorsColumnMoment.toFixed(2)} kN·m` : ''} − {previousGirderMoment.toFixed(2)} kN·m = {moment.toFixed(2)} kN·m
+                                  Girder Moment = {columnMomentAtJoint.toFixed(2)} kN·m {upperFloorColumnMoment > 0 ? `+ ${upperFloorColumnMoment.toFixed(2)} kN·m` : ''} − {previousGirderMoment.toFixed(2)} kN·m = {moment.toFixed(2)} kN·m
                                 </p>
                                 <p className="text-xs text-framepro-darkgray mt-2">
-                                  Note: At internal joints, we consider column moments from the current floor AND upper floors (all counterclockwise/negative), 
+                                  Note: At internal joints, we consider column moments from the current floor AND the floor directly above (all counterclockwise/negative), 
                                   the previous span's girder moment (clockwise/positive), and the current span's girder moment (clockwise/positive).
                                   We use absolute values in the visualization.
                                 </p>
@@ -312,11 +310,9 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                           // Add current story's last column moment
                           rightMoment = results.columnMoment[storyIndex][spanIndex + 1];
                           
-                          // Add column moments from stories above for the right column
-                          for (let i = 0; i < storyIndex; i++) {
-                            if (spanIndex + 1 < results.columnMoment[i].length) {
-                              rightMoment += results.columnMoment[i][spanIndex + 1];
-                            }
+                          // Add column moment from the story directly above for the right column (if it exists)
+                          if (storyIndex > 0 && (spanIndex + 1) < results.columnMoment[storyIndex - 1].length) {
+                            rightMoment += results.columnMoment[storyIndex - 1][spanIndex + 1];
                           }
                         } 
                         // For all other spans, right moment is the next span's left moment
@@ -324,11 +320,9 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                           // Need to calculate the next joint's column moments
                           let nextJointColumnMoment = results.columnMoment[storyIndex][spanIndex + 1];
                           
-                          // Add column moments from stories above for this joint
-                          for (let i = 0; i < storyIndex; i++) {
-                            if (spanIndex + 1 < results.columnMoment[i].length) {
-                              nextJointColumnMoment += results.columnMoment[i][spanIndex + 1];
-                            }
+                          // Add column moment from the story directly above for this joint (if it exists)
+                          if (storyIndex > 0 && (spanIndex + 1) < results.columnMoment[storyIndex - 1].length) {
+                            nextJointColumnMoment += results.columnMoment[storyIndex - 1][spanIndex + 1];
                           }
                           
                           // Calculate right moment using equilibrium at the next joint
@@ -349,8 +343,8 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                             </p>
                             {storyIndex === numStories - 1 && (
                               <p className="text-xs text-framepro-darkgray mt-2">
-                                <strong>Note:</strong> For ground floor, both left and right moments include the column moments from upper floors,
-                                ensuring that all forces through the structure are properly accounted for in the girder shear calculation.
+                                <strong>Note:</strong> For ground floor, both left and right moments include the column moments from the floor directly above,
+                                ensuring proper consideration of forces through the structure.
                               </p>
                             )}
                           </div>
@@ -395,14 +389,14 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                   Solving for the Current Girder Moment: Current Girder Moment = Column Moment - Previous Girder Moment
                 </p>
                 <p className="mt-2 text-sm font-medium">
-                  Important: Column moments from ALL floors above must be included in the calculations, as they contribute to the force distribution throughout the structure.
+                  Important: Only column moments from the current floor and the floor directly above are included in the calculations. For example, in a four-story building, the ground floor girder moments only include contributions from the ground floor and 2nd floor column moments.
                 </p>
               </div>
               
               <div className="bg-framepro-lightgray p-3 rounded-md">
                 <h4 className="font-medium mb-2">Irregular Structures</h4>
                 <p>
-                  For irregular structures, the second floor aligns with the left side of the ground floor, maintaining vertical column alignment.
+                  For irregular structures, the upper floors align with the left side of the ground floor, maintaining vertical column alignment.
                   This is critical for proper load transmission through the structure.
                 </p>
                 <p className="mt-2">
@@ -410,7 +404,7 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Exterior columns take half the shear of interior columns</li>
-                  <li>All upper floor column moments must be included in calculations</li>
+                  <li>Only column moments from the current story and the story directly above are included in calculations</li>
                   <li>Girder moments and shears follow joint equilibrium principles</li>
                 </ul>
               </div>

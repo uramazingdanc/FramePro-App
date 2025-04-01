@@ -53,7 +53,7 @@ const Visualization = () => {
             <div className="flex items-start gap-2">
               <Info className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-framepro-darkgray">
-                <span className="font-medium">Portal Method Analysis:</span> All calculations follow the portal method where moments from upper floors are included when calculating girder forces. 
+                <span className="font-medium">Portal Method Analysis:</span> Calculations follow the portal method where moments from the floor directly above are included when calculating girder forces.
                 For irregular structures, the upper floors align with the left side of the ground floor to maintain column alignment.
               </p>
             </div>
