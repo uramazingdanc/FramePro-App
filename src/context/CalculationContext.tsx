@@ -134,12 +134,12 @@ export const CalculationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         // Step 4: Calculate girder shear from girder moments
         const spanLength = spanMeasurements[storyIndex][spanIndex];
         
-        // UPDATED: For girder shear calculation use doubled moments (same value for left and right)
-        // This is for uniform distribution of moments in one direction
+        // For girder shear calculation, we add the same girder moment twice (doubling it)
+        // This represents equal moments on both ends of the girder
         const girderMoment = storyGirderMoment[spanIndex];
         
         // Calculate girder shear using the formula: (Mgirder + Mgirder) / Lspan
-        // Which is equivalent to 2 * Mgirder / Lspan
+        // Which is equivalent to: 2 * Mgirder / Lspan
         const girderShearValue = (2 * girderMoment) / spanLength;
         storyGirderShear.push(roundToTwoDecimal(girderShearValue));
       }
