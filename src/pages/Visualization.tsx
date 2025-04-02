@@ -53,7 +53,7 @@ const Visualization = () => {
             <div className="flex items-start gap-2">
               <Info className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-framepro-darkgray">
-                <span className="font-medium">Portal Method Analysis:</span> Girder moments are calculated using column moments from the current floor and the floor directly above. Girder shears are calculated by doubling the girder moment and dividing by the span length (Vgirder = (2 × Mgirder) / Lspan), which represents equal moments on both sides of the girder.
+                <span className="font-medium">Portal Method Analysis:</span> Girder moments are calculated using column moments from the current floor and the floor directly above. Girder shears are calculated by doubling the girder moment and dividing by the span length (Vgirder = 2M / L), which represents equal moments on both ends of the girder.
                 For irregular structures, the upper floors align with the left side of the ground floor to maintain column alignment.
               </p>
             </div>

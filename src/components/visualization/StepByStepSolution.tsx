@@ -284,7 +284,8 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
           <AccordionContent className="px-4 py-3 bg-white">
             <motion.div variants={item} className="space-y-4">
               <p className="text-framepro-darkgray">
-                Girder shears are calculated using the formula: V<sub>girder</sub> = (M<sub>left</sub> + M<sub>right</sub>) / L<sub>span</sub>
+                Girder shears are calculated by doubling the girder moment and dividing by the span length.
+                This represents equal moments at both ends of the girder.
               </p>
               
               {Array.from({ length: numStories }).map((_, storyIndex) => {
@@ -300,53 +301,23 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                       {Array.from({ length: spans }).map((_, spanIndex) => {
                         const spanLength = spanMeasurements[storyIndex][spanIndex];
                         const shear = results.girderShear[storyIndex][spanIndex];
-                        const leftMoment = results.girderMoment[storyIndex][spanIndex];
-                        
-                        // Calculate right moment for shear calculation
-                        let rightMoment = 0;
-                        
-                        // For last span
-                        if (spanIndex === spans - 1) {
-                          // Add current story's last column moment
-                          rightMoment = results.columnMoment[storyIndex][spanIndex + 1];
-                          
-                          // Add column moment from the story directly above for the right column (if it exists)
-                          if (storyIndex > 0 && (spanIndex + 1) < results.columnMoment[storyIndex - 1].length) {
-                            rightMoment += results.columnMoment[storyIndex - 1][spanIndex + 1];
-                          }
-                        } 
-                        // For all other spans, right moment is the next span's left moment
-                        else {
-                          // Need to calculate the next joint's column moments
-                          let nextJointColumnMoment = results.columnMoment[storyIndex][spanIndex + 1];
-                          
-                          // Add column moment from the story directly above for this joint (if it exists)
-                          if (storyIndex > 0 && (spanIndex + 1) < results.columnMoment[storyIndex - 1].length) {
-                            nextJointColumnMoment += results.columnMoment[storyIndex - 1][spanIndex + 1];
-                          }
-                          
-                          // Calculate right moment using equilibrium at the next joint
-                          rightMoment = nextJointColumnMoment - leftMoment;
-                          rightMoment = Math.abs(rightMoment);
-                        }
+                        const moment = results.girderMoment[storyIndex][spanIndex];
                         
                         return (
                           <div key={`span-shear-${storyIndex}-${spanIndex}`} className="bg-white p-2 rounded-md shadow-sm">
                             <p className="text-sm font-medium">Span {spanIndex + 1} ({spanLength} m):</p>
                             <p className="mb-1">
                               <span className="text-sm bg-framepro-green/10 p-1 rounded">
-                                V<sub>girder</sub> = (M<sub>left</sub> + M<sub>right</sub>) / L<sub>span</sub>
+                                V<sub>girder</sub> = (2 × M<sub>girder</sub>) / L<sub>span</sub>
                               </span>
                             </p>
                             <p>
-                              V<sub>girder</sub> = ({leftMoment.toFixed(2)} kN·m + {rightMoment.toFixed(2)} kN·m) / {spanLength} m = {shear.toFixed(2)} kN
+                              V<sub>girder</sub> = (2 × {moment.toFixed(2)} kN·m) / {spanLength} m = {shear.toFixed(2)} kN
                             </p>
-                            {storyIndex === numStories - 1 && (
-                              <p className="text-xs text-framepro-darkgray mt-2">
-                                <strong>Note:</strong> For ground floor, both left and right moments include the column moments from the floor directly above,
-                                ensuring proper consideration of forces through the structure.
-                              </p>
-                            )}
+                            <p className="text-xs text-framepro-darkgray mt-2">
+                              This calculation represents equal moments on both ends of the girder (M + M = 2M),
+                              which is equivalent to doubling the girder moment and then dividing by the span length.
+                            </p>
                           </div>
                         );
                       })}
@@ -390,6 +361,17 @@ const StepByStepSolution: React.FC<StepByStepSolutionProps> = ({ structureData, 
                 </p>
                 <p className="mt-2 text-sm font-medium">
                   Important: Only column moments from the current floor and the floor directly above are included in the calculations. For example, in a four-story building, the ground floor girder moments only include contributions from the ground floor and 2nd floor column moments.
+                </p>
+              </div>
+              
+              <div className="bg-framepro-lightgray p-3 rounded-md">
+                <h4 className="font-medium mb-2">Girder Shear Calculation</h4>
+                <p>
+                  For girder shear, we use the formula: V<sub>girder</sub> = (2 × M<sub>girder</sub>) / L<sub>span</sub>
+                </p>
+                <p className="mt-2">
+                  This represents equal moments on both ends of the girder. The factor of 2 comes from adding the same girder moment twice (M + M = 2M),
+                  then dividing by the span length. For example, if the moment is 57.50 kN·m, we calculate (57.50 + 57.50) / span length, which is the same as (2 × 57.50) / span length.
                 </p>
               </div>
               
